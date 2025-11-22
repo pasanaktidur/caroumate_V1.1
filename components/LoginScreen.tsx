@@ -51,7 +51,7 @@ const SampleCarouselPreview: React.FC = () => {
     );
 };
 
-export const LoginScreen: React.FC<{ onLogin: () => void; t: TFunction; }> = ({ onLogin, t }) => {
+export const LoginScreen: React.FC<{ onLogin: () => void; t: TFunction; error?: string | null }> = ({ onLogin, t, error }) => {
     return (
         <div className="bg-white dark:bg-gray-950 min-h-full flex flex-col">
             <main className="flex-grow">
@@ -78,10 +78,15 @@ export const LoginScreen: React.FC<{ onLogin: () => void; t: TFunction; }> = ({ 
                                     {t('loginSubtitle')}
                                 </p>
                                 
-                                <div className="mt-10 sm:max-w-lg sm:mx-auto sm:text-center lg:mx-0 lg:text-left flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                                <div className="mt-10 sm:max-w-lg sm:mx-auto sm:text-center lg:mx-0 lg:text-left flex flex-col gap-4 justify-center lg:justify-start">
+                                    {error && (
+                                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 text-sm font-medium text-center">
+                                            ⚠️ {error}
+                                        </div>
+                                    )}
                                     <button
                                         onClick={onLogin}
-                                        className="inline-flex items-center justify-center px-8 py-4 border border-gray-200 dark:border-gray-700 text-lg font-bold rounded-full text-gray-700 dark:text-white bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-lg transform hover:-translate-y-1 transition-all duration-300"
+                                        className="inline-flex items-center justify-center px-8 py-4 border border-gray-200 dark:border-gray-700 text-lg font-bold rounded-full text-gray-700 dark:text-white bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-lg transform hover:-translate-y-1 transition-all duration-300 mx-auto lg:mx-0 w-fit"
                                     >
                                        <GoogleIcon className="mr-3 w-6 h-6" />
                                        Sign in with Google

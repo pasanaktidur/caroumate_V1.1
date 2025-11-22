@@ -341,13 +341,26 @@ export default function App() {
     };
 
     const handleLogin = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.origin // Ensures it comes back to the app
+        setError(null);
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin // Ensures it comes back to the app
+                }
+            });
+            if (error) {
+                console.error("Login error:", error);
+                if (error.message?.includes("provider is not enabled")) {
+                     setError("Google Login belum diaktifkan di Dashboard Supabase Anda. Silakan aktifkan di Authentication > Providers.");
+                } else {
+                    setError(error.message);
+                }
             }
-        });
-        if (error) console.error("Login error:", error.message);
+        } catch (err: any) {
+            console.error("Login exception:", err);
+            setError(err.message || "Failed to initialize login.");
+        }
     };
     
     const handleLogout = async () => {
@@ -961,7 +974,7 @@ export default function App() {
 
     const renderContent = () => {
         switch (view) {
-            case 'LOGIN': return <LoginScreen onLogin={handleLogin} t={t} />;
+            case 'LOGIN': return <LoginScreen onLogin={handleLogin} t={t} error={error} />;
             case 'PROFILE_SETUP': return <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />;
             case 'DASHBOARD': return (
                 <Dashboard
@@ -1033,7 +1046,7 @@ export default function App() {
                     content={translations[language].tutorial}
                 />
             );
-            default: return <LoginScreen onLogin={handleLogin} t={t} />;
+            default: return <LoginScreen onLogin={handleLogin} t={t} error={error} />;
         }
     };
 

@@ -10,7 +10,7 @@ import {
 import { supabase } from './lib/supabaseClient';
 
 import { translations } from './lib/translations';
-import { SETTINGS_STORAGE_KEY, DOWNLOADS_STORAGE_KEY, defaultSettings } from './lib/constants';
+import { SETTINGS_STORAGE_KEY, DOWNLOADS_STORAGE_KEY, HISTORY_STORAGE_KEY, defaultSettings } from './lib/constants';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -61,6 +61,7 @@ export default function App() {
     const [previousView, setPreviousView] = React.useState<AppView>('DASHBOARD');
     
     const [carouselHistory, setCarouselHistory] = React.useState<Carousel[]>([]);
+    const [localHistoryCount, setLocalHistoryCount] = React.useState<number>(0);
     
     const [downloadCount, setDownloadCount] = React.useState<number>(() => {
         try {
@@ -110,6 +111,19 @@ export default function App() {
             return defaultSettings;
         }
     });
+    
+    // Check for local storage data on load
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setLocalHistoryCount(parsed.length);
+                }
+            }
+        } catch (e) {}
+    }, []);
 
     const handleLanguageChange = () => {
         setLanguage(lang => lang === 'en' ? 'id' : 'en');
@@ -399,6 +413,56 @@ export default function App() {
         fetchHistory(userId);
     };
     
+    const handleMigrateLocalData = async () => {
+        if (!user) return;
+        const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+        if (!saved) return;
+
+        try {
+            const localCarousels: Carousel[] = JSON.parse(saved);
+            if (localCarousels.length === 0) return;
+
+            const confirm = window.confirm(`We found ${localCarousels.length} carousels on your device. Do you want to sync them to your account?`);
+            if (!confirm) return;
+
+            let successCount = 0;
+            // Use a Promise.all or sequential loop. Sequential is safer to avoid rate limits or connection issues
+            for (const carousel of localCarousels) {
+                // Ensure IDs are valid UUIDs. Local storage might use random strings, Supabase expects UUID.
+                // If existing IDs are not UUIDs, generate new ones.
+                // Simple UUID check:
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(carousel.id);
+                
+                // Prepare clean carousel for DB
+                const cleanCarousel = {
+                    ...carousel,
+                    id: isUUID ? carousel.id : crypto.randomUUID(),
+                    slides: carousel.slides.map(s => ({
+                        ...s,
+                        id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.id) ? s.id : crypto.randomUUID()
+                    }))
+                };
+
+                await saveCarouselToDb(cleanCarousel);
+                successCount++;
+            }
+
+            // Clear local storage after success
+            localStorage.removeItem(HISTORY_STORAGE_KEY);
+            setLocalHistoryCount(0);
+            
+            // Refresh fetching
+            const userId = (await supabase.auth.getUser()).data.user?.id;
+            if (userId) fetchHistory(userId);
+
+            alert(`Successfully synced ${successCount} carousels!`);
+
+        } catch (e) {
+            console.error("Migration failed:", e);
+            alert("Migration partially failed. Check console for details.");
+        }
+    };
+
     const goToDashboard = () => {
         if (view === 'LOGIN' || view === 'PROFILE_SETUP') return;
         if (currentCarousel) {
@@ -987,6 +1051,8 @@ export default function App() {
                     t={t}
                     downloadCount={downloadCount}
                     mostUsedCategory={mostUsedCategory}
+                    localHistoryCount={localHistoryCount}
+                    onMigrateLocalData={handleMigrateLocalData}
                 />
             );
             case 'GENERATOR': return (

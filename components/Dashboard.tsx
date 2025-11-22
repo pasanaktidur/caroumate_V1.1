@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Carousel } from '../types';
 import type { TFunction } from '../App';
-import { SparklesIcon, TrashIcon, DocumentTextIcon, DownloadIcon } from './icons';
+import { SparklesIcon, TrashIcon, DocumentTextIcon, DownloadIcon, UploadIcon } from './icons';
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode }> = ({ title, value, icon }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center space-x-4 hover:shadow-md transition-shadow duration-200">
@@ -81,8 +81,33 @@ export const Dashboard: React.FC<{
     t: TFunction;
     downloadCount: number;
     mostUsedCategory: string;
-}> = ({ onNewCarousel, onShowTutorial, history, onEdit, onDelete, onClearHistory, t, downloadCount, mostUsedCategory }) => (
+    localHistoryCount?: number;
+    onMigrateLocalData?: () => void;
+}> = ({ onNewCarousel, onShowTutorial, history, onEdit, onDelete, onClearHistory, t, downloadCount, mostUsedCategory, localHistoryCount, onMigrateLocalData }) => (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl pb-24 md:pb-8">
+        {/* Migration Banner */}
+        {localHistoryCount && localHistoryCount > 0 && (
+            <div className="mb-8 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-xl text-indigo-600 dark:text-indigo-400">
+                        <UploadIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white">Sync Local Data</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            We found {localHistoryCount} carousels in your browser storage. Sync them to the cloud to access them anywhere.
+                        </p>
+                    </div>
+                </div>
+                <button 
+                    onClick={onMigrateLocalData}
+                    className="w-full sm:w-auto whitespace-nowrap px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-sm"
+                >
+                    Sync Now
+                </button>
+            </div>
+        )}
+
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
             <div>

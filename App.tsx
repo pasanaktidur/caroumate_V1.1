@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -25,6 +26,7 @@ import { TutorialScreen } from './components/TutorialScreen';
 import { AiAssistantModal } from './components/AiAssistantModal';
 import { CaptionModal } from './components/CaptionModal';
 import { ThreadModal } from './components/ThreadModal';
+import { Loader } from './components/Loader';
 
 export type TFunction = (key: string, params?: { [key: string]: any }) => string;
 
@@ -56,7 +58,7 @@ export default function App() {
     
     // --- State Initialization ---
     const [user, setUser] = React.useState<UserProfile | null>(null);
-    const [view, setView] = React.useState<AppView>('LOGIN');
+    const [view, setView] = React.useState<AppView>('LOADING'); // Start in LOADING state
 
     const [previousView, setPreviousView] = React.useState<AppView>('DASHBOARD');
     
@@ -179,8 +181,11 @@ export default function App() {
 
     // Auth State Listener
     React.useEffect(() => {
+        let mounted = true;
+        
         // Check active session
         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!mounted) return;
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
             } else {
@@ -189,6 +194,7 @@ export default function App() {
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (!mounted) return;
             if (session?.user) {
                 fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
             } else {
@@ -198,7 +204,10 @@ export default function App() {
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
     }, [fetchHistory]);
 
     const fetchUserProfile = async (userId: string, email: string, metadata: any) => {
@@ -229,8 +238,8 @@ export default function App() {
                     setView('PROFILE_SETUP');
                 }
             } else {
-                // Profile doesn't exist, initialize logic handled in ProfileSetupModal mostly, 
-                // but let's create a basic user object to get to setup
+                // Profile doesn't exist in table yet, so they need to setup.
+                // We create a temporary user object to render the setup modal
                 const newUser: UserProfile = {
                     name: metadata.full_name || email.split('@')[0],
                     email: email,
@@ -243,6 +252,7 @@ export default function App() {
             }
         } catch (e) {
             console.error("Profile fetch error:", e);
+            setView('LOGIN');
         }
     };
 
@@ -430,7 +440,6 @@ export default function App() {
             for (const carousel of localCarousels) {
                 // Ensure IDs are valid UUIDs. Local storage might use random strings, Supabase expects UUID.
                 // If existing IDs are not UUIDs, generate new ones.
-                // Simple UUID check:
                 const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(carousel.id);
                 
                 // Prepare clean carousel for DB
@@ -1038,6 +1047,7 @@ export default function App() {
 
     const renderContent = () => {
         switch (view) {
+            case 'LOADING': return <div className="flex h-full items-center justify-center"><Loader text="" /></div>;
             case 'LOGIN': return <LoginScreen onLogin={handleLogin} t={t} error={error} />;
             case 'PROFILE_SETUP': return <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />;
             case 'DASHBOARD': return (
@@ -1144,7 +1154,7 @@ export default function App() {
                     <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
                         {renderContent()}
                     </main>
-                    {view !== 'GENERATOR' && (
+                    {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && (
                         <Footer className={!user ? "block" : "hidden md:block"} />
                     )}
                 </div>
@@ -1196,7 +1206,7 @@ export default function App() {
                     }}
                 />
             )}
-            {user && user.profileComplete && (
+            {user && user.profileComplete && view !== 'LOADING' && (
                 <MobileFooter
                     currentView={view}
                     onNavigate={(targetView) => {

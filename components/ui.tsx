@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 // FIX: FontChoice is an enum used as a value, so it must be imported as a value, not a type.
 import type { TextStyle, Position } from '../types';
@@ -40,32 +41,32 @@ export const FontSelector: React.FC<{
                 type="button"
                 id={id}
                 onClick={() => setIsOpen(!isOpen)}
-                className="mt-1 relative w-full cursor-pointer rounded-xl bg-gray-50 dark:bg-gray-800 py-2.5 pl-4 pr-10 text-left text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 sm:text-sm sm:leading-6 transition-shadow hover:ring-gray-300 dark:hover:ring-gray-600"
+                className="mt-1 relative w-full cursor-pointer rounded-xl bg-gray-50 dark:bg-gray-800 py-2 pl-3 pr-8 text-left text-gray-900 dark:text-gray-200 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs sm:text-sm transition-shadow hover:ring-gray-300 dark:hover:ring-gray-600"
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
             >
-                <span className={`block truncate ${fontClassMap[value]} text-base`}>{value}</span>
-                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                    <ChevronDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                <span className={`block truncate ${fontClassMap[value]} text-sm`}>{value}</span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronDownIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
                 </span>
             </button>
 
             {isOpen && (
                 <ul
-                    className="absolute z-20 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm custom-scrollbar"
+                    className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl bg-white dark:bg-gray-800 py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none custom-scrollbar"
                     role="listbox"
                     aria-labelledby={id}
                 >
                     {Object.values(FontChoice).map((font) => (
                         <li
                             key={font}
-                            className={`relative cursor-pointer select-none py-2.5 pl-4 pr-9 text-gray-900 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors ${fontClassMap[font]}`}
+                            className={`relative cursor-pointer select-none py-2 pl-3 pr-8 text-gray-900 dark:text-gray-200 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors ${fontClassMap[font]}`}
                             id={`option-${id}-${font}`}
                             role="option"
                             aria-selected={font === value}
                             onClick={() => handleSelect(font)}
                         >
-                            <span className={`block truncate ${font === value ? 'text-primary-600 dark:text-primary-400' : ''}`}>{font}</span>
+                            <span className={`block truncate text-xs sm:text-sm ${font === value ? 'text-primary-600 dark:text-primary-400' : ''}`}>{font}</span>
                         </li>
                     ))}
                 </ul>
@@ -82,8 +83,8 @@ export const ApplyScopeControl: React.FC<{
     t: TFunction;
     fieldId: string;
 }> = ({ scope, setScope, isDisabled, t, fieldId }) => (
-    <div className="flex items-center space-x-3 mt-2 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-lg border border-gray-100 dark:border-gray-700">
-        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2">{t('applyTo')}</span>
+    <div className="flex items-center space-x-2 mt-2 bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-lg border border-gray-100 dark:border-gray-700">
+        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">{t('applyTo')}</span>
         <div className="flex items-center space-x-3">
              <label className="inline-flex items-center cursor-pointer">
                 <input
@@ -93,9 +94,9 @@ export const ApplyScopeControl: React.FC<{
                     value="all"
                     checked={scope === 'all'}
                     onChange={() => setScope('all')}
-                    className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    className="h-3.5 w-3.5 text-primary-600 border-gray-300 focus:ring-primary-500"
                 />
-                <span className="ml-2 text-xs text-gray-700 dark:text-gray-300 font-medium">{t('applyToAll')}</span>
+                <span className="ml-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium">{t('applyToAll')}</span>
             </label>
             <label className={`inline-flex items-center ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
@@ -106,9 +107,9 @@ export const ApplyScopeControl: React.FC<{
                     checked={scope === 'selected'}
                     onChange={() => !isDisabled && setScope('selected')}
                     disabled={isDisabled}
-                    className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    className="h-3.5 w-3.5 text-primary-600 border-gray-300 focus:ring-primary-500"
                 />
-                <span className="ml-2 text-xs text-gray-700 dark:text-gray-300 font-medium">{t('applyToSelected')}</span>
+                <span className="ml-1.5 text-xs text-gray-700 dark:text-gray-300 font-medium">{t('applyToSelected')}</span>
             </label>
         </div>
     </div>
@@ -131,33 +132,33 @@ export const TextFormatToolbar: React.FC<{ style: TextStyle, onStyleChange: (new
 
     const isDecorationActive = (value: string) => (style.textDecorationLine || '').includes(value);
 
-    const btnBase = "p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50";
+    const btnBase = "p-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50";
     const btnActive = "bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300";
     const btnInactive = "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700";
 
     return (
-        <div className="flex flex-wrap items-center gap-1 p-1.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700">
-            <button type="button" onClick={() => toggleStyle('fontWeight', 'bold', 'normal')} className={`${btnBase} ${style.fontWeight === 'bold' ? btnActive : btnInactive}`}><BoldIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => toggleStyle('fontStyle', 'italic', 'normal')} className={`${btnBase} ${style.fontStyle === 'italic' ? btnActive : btnInactive}`}><ItalicIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => toggleDecoration('underline')} className={`${btnBase} ${isDecorationActive('underline') ? btnActive : btnInactive}`}><UnderlineIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => toggleDecoration('line-through')} className={`${btnBase} ${isDecorationActive('line-through') ? btnActive : btnInactive}`}><StrikethroughIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => toggleStyle('textTransform', 'uppercase', 'none')} className={`${btnBase} ${style.textTransform === 'uppercase' ? btnActive : btnInactive}`}><CaseIcon className="w-4 h-4" /></button>
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700">
+            <button type="button" onClick={() => toggleStyle('fontWeight', 'bold', 'normal')} className={`${btnBase} ${style.fontWeight === 'bold' ? btnActive : btnInactive}`}><BoldIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleStyle('fontStyle', 'italic', 'normal')} className={`${btnBase} ${style.fontStyle === 'italic' ? btnActive : btnInactive}`}><ItalicIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleDecoration('underline')} className={`${btnBase} ${isDecorationActive('underline') ? btnActive : btnInactive}`}><UnderlineIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleDecoration('line-through')} className={`${btnBase} ${isDecorationActive('line-through') ? btnActive : btnInactive}`}><StrikethroughIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => toggleStyle('textTransform', 'uppercase', 'none')} className={`${btnBase} ${style.textTransform === 'uppercase' ? btnActive : btnInactive}`}><CaseIcon className="w-3.5 h-3.5" /></button>
             
-            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
             
-            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'left' })} className={`${btnBase} ${style.textAlign === 'left' ? btnActive : btnInactive}`}><AlignLeftIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'center' })} className={`${btnBase} ${style.textAlign === 'center' ? btnActive : btnInactive}`}><AlignCenterIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'right' })} className={`${btnBase} ${style.textAlign === 'right' ? btnActive : btnInactive}`}><AlignRightIcon className="w-4 h-4" /></button>
-            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'justify' })} className={`${btnBase} ${style.textAlign === 'justify' ? btnActive : btnInactive}`}><AlignJustifyIcon className="w-4 h-4" /></button>
+            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'left' })} className={`${btnBase} ${style.textAlign === 'left' ? btnActive : btnInactive}`}><AlignLeftIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'center' })} className={`${btnBase} ${style.textAlign === 'center' ? btnActive : btnInactive}`}><AlignCenterIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'right' })} className={`${btnBase} ${style.textAlign === 'right' ? btnActive : btnInactive}`}><AlignRightIcon className="w-3.5 h-3.5" /></button>
+            <button type="button" onClick={() => onStyleChange({ ...style, textAlign: 'justify' })} className={`${btnBase} ${style.textAlign === 'justify' ? btnActive : btnInactive}`}><AlignJustifyIcon className="w-3.5 h-3.5" /></button>
             
-            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+            <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></div>
             
-            <div className="flex items-center ml-1">
+            <div className="flex items-center ml-0.5">
                  <input
                     type="number"
                     value={style.fontSize ? style.fontSize * 10 : ''}
                     onChange={e => onStyleChange({ ...style, fontSize: parseFloat(e.target.value) / 10 })}
-                    className="w-14 py-1 px-2 text-sm text-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-12 py-0.5 px-1 text-xs text-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     step="1"
                     min="5"
                     max="100"
@@ -180,10 +181,10 @@ export const TextStrokeControl: React.FC<{
     };
 
     return (
-        <div className="flex items-center gap-2 p-1.5 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700">
-            <span className="text-xs font-semibold uppercase tracking-wide px-2 text-gray-500 dark:text-gray-400">Border</span>
-            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-            <div className="relative w-6 h-6 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600 shadow-sm cursor-pointer">
+        <div className="flex items-center gap-1.5 p-1 bg-gray-50 dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700">
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 text-gray-500 dark:text-gray-400">Border</span>
+            <div className="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="relative w-5 h-5 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600 shadow-sm cursor-pointer">
                  <input
                     type="color"
                     value={stroke.color}
@@ -199,13 +200,13 @@ export const TextStrokeControl: React.FC<{
                 type="number"
                 value={stroke.width}
                 onChange={e => handleStrokeChange({ ...stroke, width: Math.max(0, parseInt(e.target.value, 10) || 0) })}
-                className="w-14 py-1 px-2 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-12 py-0.5 px-1 text-xs bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 step="1"
                 min="0"
                 max="10"
                 aria-label="Text border width"
             />
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">px</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium pr-1">px</span>
         </div>
     );
 };
@@ -232,9 +233,9 @@ export const ColorInput: React.FC<{
     
     return (
         <div className="group">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">{label}</label>
+            <label className="block text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-1">{label}</label>
             <div className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent transition-shadow">
-                <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer flex-shrink-0">
+                <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 shadow-sm cursor-pointer flex-shrink-0">
                      <input
                         type="color"
                         id={id}
@@ -249,7 +250,7 @@ export const ColorInput: React.FC<{
                     type="text"
                     value={textValue}
                     onChange={handleTextChange}
-                    className="block w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-200 focus:ring-0 font-mono uppercase tracking-wider"
+                    className="block w-full bg-transparent border-none text-xs text-gray-700 dark:text-gray-200 focus:ring-0 font-mono uppercase tracking-wider"
                     aria-label={`${label} hex code`}
                 />
             </div>
@@ -275,14 +276,14 @@ export const PositionSelector: React.FC<{
 
     return (
         <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">{label}</label>
-            <div className="grid grid-cols-3 gap-2 bg-gray-50 dark:bg-gray-800/80 p-2 rounded-xl border border-gray-200 dark:border-gray-700">
+            <label className="block text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 mb-1.5">{label}</label>
+            <div className="grid grid-cols-3 gap-1.5 bg-gray-50 dark:bg-gray-800/80 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
                 {positions.map(pos => (
                     <button
                         type="button"
                         key={pos}
                         onClick={() => onChange(pos)}
-                        className={`px-2 py-2 text-[10px] uppercase font-bold rounded-lg border transition-all duration-200 ${
+                        className={`px-1 py-1.5 text-[9px] uppercase font-bold rounded-lg border transition-all duration-200 ${
                             value === pos
                                 ? 'bg-primary-100 text-primary-700 border-primary-200 dark:bg-primary-900/50 dark:text-primary-300 dark:border-primary-800'
                                 : 'bg-white dark:bg-gray-700 border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600'

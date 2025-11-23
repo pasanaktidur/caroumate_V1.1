@@ -323,9 +323,9 @@ export default function App() {
                 }
             });
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("Error saving carousel to DB:", e);
-            setError("Failed to save changes to the cloud.");
+            setError(`Failed to save changes to the cloud: ${e.message || 'Unknown error'}`);
         }
     };
 
@@ -965,7 +965,7 @@ export default function App() {
             }
             // Temp creation for new carousel before generation is mostly local state until generation happens
             return {
-                id: 'temp-' + crypto.randomUUID(),
+                id: crypto.randomUUID(),
                 title: topicValue,
                 createdAt: new Date().toISOString(),
                 slides: [],

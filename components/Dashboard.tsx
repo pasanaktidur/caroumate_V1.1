@@ -86,7 +86,7 @@ export const Dashboard: React.FC<{
 }> = ({ onNewCarousel, onShowTutorial, history, onEdit, onDelete, onClearHistory, t, downloadCount, mostUsedCategory, localHistoryCount, onMigrateLocalData }) => (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl pb-24 md:pb-8">
         {/* Migration Banner */}
-        {localHistoryCount && localHistoryCount > 0 && (
+        {(localHistoryCount ?? 0) > 0 && (
             <div className="mb-8 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div className="bg-indigo-100 dark:bg-indigo-900/50 p-3 rounded-xl text-indigo-600 dark:text-indigo-400">

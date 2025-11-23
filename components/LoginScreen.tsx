@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import type { TFunction } from '../App';
 import { SparklesIcon, SettingsIcon, DownloadIcon, GoogleIcon, LoaderIcon } from './icons';
@@ -59,8 +60,10 @@ export const LoginScreen: React.FC<{
     t: TFunction; 
     error?: string | null;
     onErrorDismiss: () => void;
-}> = ({ onGoogleLogin, onEmailLogin, onEmailSignUp, t, error, onErrorDismiss }) => {
-    const [isLoginMode, setIsLoginMode] = React.useState(true);
+    mode: 'login' | 'signup';
+    onSwitchMode: (mode: 'login' | 'signup') => void;
+}> = ({ onGoogleLogin, onEmailLogin, onEmailSignUp, t, error, onErrorDismiss, mode, onSwitchMode }) => {
+    const isLoginMode = mode === 'login';
     const [isLoading, setIsLoading] = React.useState(false);
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
@@ -194,7 +197,7 @@ export const LoginScreen: React.FC<{
                                     <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
                                         {isLoginMode ? t('noAccount') : t('haveAccount')}{' '}
                                         <button 
-                                            onClick={() => { setIsLoginMode(!isLoginMode); onErrorDismiss(); }} 
+                                            onClick={() => { onSwitchMode(isLoginMode ? 'signup' : 'login'); onErrorDismiss(); }} 
                                             className="font-bold text-primary-600 dark:text-primary-400 hover:underline"
                                         >
                                             {isLoginMode ? t('signUpButton') : t('signInButton')}

@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -150,6 +151,8 @@ export default function App() {
         // Path-based routing
         if (path.startsWith('/dashboard')) return 'DASHBOARD';
         if (path.startsWith('/generator')) return 'GENERATOR';
+        if (path.startsWith('/login')) return 'LOGIN';
+        if (path.startsWith('/signup')) return 'SIGNUP';
 
         // Fallback: Check URL Query Params
         const params = new URLSearchParams(window.location.search);
@@ -164,8 +167,12 @@ export default function App() {
     React.useEffect(() => {
         const handlePopState = () => {
             const view = determineInitialView();
-            if (view && user?.profileComplete) {
-                setView(view);
+            if (view) {
+                if (user?.profileComplete) {
+                     setView(view === 'LOGIN' || view === 'SIGNUP' ? 'DASHBOARD' : view);
+                } else {
+                     setView(view === 'SIGNUP' ? 'SIGNUP' : 'LOGIN');
+                }
             }
         };
 
@@ -223,9 +230,24 @@ export default function App() {
                     // Replace state to clear hash but keep pathname
                     window.history.replaceState(null, '', window.location.pathname);
                 }
+                
+                // If on login/signup page but already logged in, redirect to dashboard
+                const currentPath = window.location.pathname;
+                if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
+                     window.history.replaceState(null, '', '/dashboard');
+                }
+
                 fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
             } else {
-                setView('LOGIN');
+                const currentPath = window.location.pathname;
+                if (currentPath === '/signup') {
+                     setView('SIGNUP');
+                } else {
+                    setView('LOGIN');
+                    if (currentPath !== '/login') {
+                        window.history.replaceState(null, '', '/login');
+                    }
+                }
             }
         });
 
@@ -236,7 +258,15 @@ export default function App() {
             } else {
                 setUser(null);
                 setCarouselHistory([]);
-                setView('LOGIN');
+                const currentPath = window.location.pathname;
+                if (currentPath === '/signup') {
+                     setView('SIGNUP');
+                } else {
+                    setView('LOGIN');
+                    if (currentPath !== '/login') {
+                        window.history.replaceState(null, '', '/login');
+                    }
+                }
             }
         });
 
@@ -269,7 +299,13 @@ export default function App() {
                 setUser(userProfile);
                 if (data.is_profile_complete) {
                     const intendedView = determineInitialView();
-                    setView(intendedView || 'DASHBOARD');
+                    // Don't stay on login page if profile is complete
+                    if (intendedView === 'LOGIN' || intendedView === 'SIGNUP' || intendedView === null) {
+                        setView('DASHBOARD');
+                        window.history.replaceState(null, '', '/dashboard');
+                    } else {
+                        setView(intendedView);
+                    }
                     fetchHistory(userId);
                 } else {
                     setView('PROFILE_SETUP');
@@ -289,6 +325,7 @@ export default function App() {
         } catch (e) {
             console.error("Profile fetch error:", e);
             setView('LOGIN');
+            window.history.replaceState(null, '', '/login');
         }
     };
 
@@ -476,6 +513,8 @@ export default function App() {
     
     const handleLogout = async () => {
         await supabase.auth.signOut();
+        setView('LOGIN');
+        window.history.pushState(null, '', '/login');
     };
 
     const handleProfileSetup = async (profile: Omit<UserProfile, 'profileComplete'>) => {
@@ -506,6 +545,7 @@ export default function App() {
 
         setUser({ ...cleanedProfile, profileComplete: true });
         setView('DASHBOARD');
+        window.history.pushState(null, '', '/dashboard');
         fetchHistory(userId);
     };
     
@@ -553,7 +593,7 @@ export default function App() {
     };
 
     const goToDashboard = () => {
-        if (view === 'LOGIN' || view === 'PROFILE_SETUP') return;
+        if (view === 'LOGIN' || view === 'SIGNUP' || view === 'PROFILE_SETUP') return;
         setIsSettingsOpen(false); // Close settings if navigating
         if (currentCarousel) {
             saveCarouselToDb(currentCarousel);
@@ -1130,6 +1170,26 @@ export default function App() {
                     t={t} 
                     error={error} 
                     onErrorDismiss={() => setError(null)}
+                    mode="login"
+                    onSwitchMode={(m) => {
+                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
+                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
+                    }}
+                />
+            );
+            case 'SIGNUP': return (
+                <LoginScreen 
+                    onGoogleLogin={handleGoogleLogin} 
+                    onEmailLogin={handleEmailLogin}
+                    onEmailSignUp={handleEmailSignUp}
+                    t={t} 
+                    error={error} 
+                    onErrorDismiss={() => setError(null)}
+                    mode="signup"
+                    onSwitchMode={(m) => {
+                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
+                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
+                    }}
                 />
             );
             case 'PROFILE_SETUP': return <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />;
@@ -1201,6 +1261,11 @@ export default function App() {
                     t={t} 
                     error={error} 
                     onErrorDismiss={() => setError(null)}
+                    mode="login"
+                    onSwitchMode={(m) => {
+                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
+                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
+                    }}
                 />
             );
         }
@@ -1229,7 +1294,7 @@ export default function App() {
                 <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
                     {renderContent()}
                 </main>
-                {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && (
+                {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && view !== 'SIGNUP' && (
                     <Footer className={!user ? "block" : "hidden md:block"} />
                 )}
             </div>

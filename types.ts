@@ -1,4 +1,5 @@
 
+
 export type Position = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center';
 
 export interface BrandKit {
@@ -92,7 +93,7 @@ export interface Carousel {
   preferences: DesignPreferences;
 }
 
-export type AppView = 'LOADING' | 'LOGIN' | 'PROFILE_SETUP' | 'DASHBOARD' | 'GENERATOR' | 'SETTINGS' | 'TUTORIAL';
+export type AppView = 'LOADING' | 'LOGIN' | 'SIGNUP' | 'PROFILE_SETUP' | 'DASHBOARD' | 'GENERATOR' | 'SETTINGS' | 'TUTORIAL';
 
 export enum AIModel {
     GEMINI_2_5_FLASH = 'gemini-2.5-flash', // Fast and cost-effective for most tasks.

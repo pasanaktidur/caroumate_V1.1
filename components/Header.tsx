@@ -1,7 +1,7 @@
 import * as React from 'react';
-import type { UserProfile, Language } from '../types';
+import type { UserProfile, Language, AppView } from '../types';
 import type { TFunction } from '../App';
-import { SparklesIcon, SettingsIcon, GiftIcon, LogoutIcon, MoonIcon, SunIcon } from './icons';
+import { SparklesIcon, SettingsIcon, GiftIcon, LogoutIcon, MoonIcon, SunIcon, HomeIcon } from './icons';
 
 export const Header: React.FC<{
     user: UserProfile | null;
@@ -13,23 +13,56 @@ export const Header: React.FC<{
     theme: 'light' | 'dark';
     onToggleTheme: () => void;
     t: TFunction;
-}> = ({ user, onLogout, onDashboard, onOpenSettings, language, onLanguageChange, theme, onToggleTheme, t }) => (
+    currentView?: AppView;
+    onNavigate?: (view: AppView) => void;
+}> = ({ user, onLogout, onDashboard, onOpenSettings, language, onLanguageChange, theme, onToggleTheme, t, currentView, onNavigate }) => (
     <header className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40 transition-all duration-300">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-                <div className="flex items-center space-x-2.5 cursor-pointer group" onClick={onDashboard}>
-                    <div className="bg-gradient-to-br from-primary-400 to-primary-600 p-1.5 rounded-lg shadow-lg shadow-primary-500/20 group-hover:shadow-primary-500/40 transition-all duration-300">
-                        <SparklesIcon className="w-5 h-5 text-white" />
+                <div className="flex items-center gap-6 lg:gap-8">
+                    <div className="flex items-center space-x-2.5 cursor-pointer group" onClick={onDashboard}>
+                        <div className="bg-gradient-to-br from-primary-400 to-primary-600 p-1.5 rounded-lg shadow-lg shadow-primary-500/20 group-hover:shadow-primary-500/40 transition-all duration-300">
+                            <SparklesIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tight">CarouMate</h1>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 tracking-tight">CarouMate</h1>
+
+                    {/* Desktop Navigation */}
+                    {user && onNavigate && (
+                        <nav className="hidden md:flex items-center space-x-1">
+                            <button
+                                onClick={() => onNavigate('DASHBOARD')}
+                                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                    currentView === 'DASHBOARD'
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 ring-1 ring-primary-200 dark:ring-primary-800/50'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+                                }`}
+                            >
+                                <HomeIcon className={`w-4 h-4 ${currentView === 'DASHBOARD' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`} />
+                                <span>{t('dashboardTitle')}</span>
+                            </button>
+                            <button
+                                onClick={() => onNavigate('GENERATOR')}
+                                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                                    currentView === 'GENERATOR'
+                                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 ring-1 ring-primary-200 dark:ring-primary-800/50'
+                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+                                }`}
+                            >
+                                <SparklesIcon className={`w-4 h-4 ${currentView === 'GENERATOR' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400'}`} />
+                                <span>{t('generator')}</span>
+                            </button>
+                        </nav>
+                    )}
                 </div>
+
                 {user && (
                     <div className="flex items-center space-x-2 sm:space-x-3">
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden md:block mr-2">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden lg:block mr-2">
                             {t('welcome', { name: user.name.split(' ')[0] })}
                         </span>
                         
-                        <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden md:block mx-2"></div>
+                        <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden lg:block mx-2"></div>
 
                         <button
                             onClick={onLanguageChange}

@@ -13,7 +13,6 @@ import { translations } from './lib/translations';
 import { SETTINGS_STORAGE_KEY, DOWNLOADS_STORAGE_KEY, HISTORY_STORAGE_KEY, defaultSettings } from './lib/constants';
 
 import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
 import { MobileFooter } from './components/MobileFooter';
 import { Footer } from './components/Footer';
 import { LoginScreen } from './components/LoginScreen';
@@ -264,6 +263,8 @@ export default function App() {
         const session = await supabase.auth.getSession();
         const userId = session.data.session?.user?.id;
         if (!userId) return;
+        
+        console.log(`[SUPABASE START] Saving carousel "${carousel.title}"...`);
 
         try {
             // 1. Upsert Carousel
@@ -278,7 +279,10 @@ export default function App() {
                     created_at: carousel.createdAt
                 });
 
-            if (carouselError) throw carouselError;
+            if (carouselError) {
+                 console.error("[SUPABASE ERROR] Failed to save carousel meta:", carouselError);
+                 throw carouselError;
+            }
 
             // 2. Prepare Slides
             // Note: We need to map frontend SlideData to DB columns
@@ -302,7 +306,12 @@ export default function App() {
                 .from('slides')
                 .upsert(slidesPayload);
             
-            if (slidesError) throw slidesError;
+            if (slidesError) {
+                console.error("[SUPABASE ERROR] Failed to save slides:", slidesError);
+                throw slidesError;
+            }
+
+            console.log(`[SUPABASE SUCCESS] Carousel "${carousel.title}" saved successfully.`);
 
             // Update local history state to match
             setCarouselHistory(prev => {
@@ -1141,26 +1150,19 @@ export default function App() {
                 theme={theme}
                 onToggleTheme={toggleTheme}
                 t={t}
+                currentView={view}
+                onNavigate={(v) => {
+                    if (v === 'DASHBOARD') goToDashboard();
+                    else setView(v);
+                }}
             />
-            <div className="flex flex-grow overflow-hidden relative">
-                {user && user.profileComplete && (
-                    <Sidebar 
-                        currentView={view} 
-                        onNavigate={(v) => {
-                            if (v === 'DASHBOARD') goToDashboard();
-                            else setView(v);
-                        }}
-                        t={t} 
-                    />
+            <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
+                <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
+                    {renderContent()}
+                </main>
+                {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && (
+                    <Footer className={!user ? "block" : "hidden md:block"} />
                 )}
-                <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950">
-                    <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
-                        {renderContent()}
-                    </main>
-                    {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && (
-                        <Footer className={!user ? "block" : "hidden md:block"} />
-                    )}
-                </div>
             </div>
 
             {/* Modals */}

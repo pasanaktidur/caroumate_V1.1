@@ -192,7 +192,7 @@ export const Generator: React.FC<{
     const isVisualGenerationRunning = isGeneratingImageForSlide != null || isGeneratingVideoForSlide != null;
 
     return (
-        <div className="flex-grow lg:flex lg:flex-row lg:overflow-hidden">
+        <div className="flex-grow lg:h-full lg:flex lg:flex-row lg:overflow-hidden">
             {/* Left Panel: Controls */}
             <div
                 className="w-full lg:w-[var(--sidebar-width)] lg:flex-shrink-0 bg-white dark:bg-gray-900 border-r dark:border-gray-800 p-0 lg:overflow-y-auto custom-scrollbar flex flex-col z-10 shadow-xl lg:shadow-none"

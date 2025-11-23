@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -140,6 +141,30 @@ export default function App() {
         return text;
     }, [language]);
 
+    // --- Subdomain & URL Routing Logic ---
+    const determineInitialView = (): AppView | null => {
+        if (typeof window === 'undefined') return null;
+
+        const hostname = window.location.hostname;
+        const parts = hostname.split('.');
+        
+        // Check for subdomains (e.g., dashboard.site.com, generator.site.com)
+        // Ignores 'www' and assumes standard structure
+        if (parts.length >= 2) {
+             const subdomain = parts[0].toLowerCase();
+             if (subdomain === 'dashboard') return 'DASHBOARD';
+             if (subdomain === 'generator') return 'GENERATOR';
+        }
+
+        // Fallback: Check URL Query Params (e.g. ?view=generator)
+        const params = new URLSearchParams(window.location.search);
+        const viewParam = params.get('view');
+        if (viewParam === 'dashboard') return 'DASHBOARD';
+        if (viewParam === 'generator') return 'GENERATOR';
+        
+        return null;
+    };
+
     // --- Supabase Authentication & Data Sync ---
 
     // Fetch carousels from Supabase
@@ -234,14 +259,15 @@ export default function App() {
                 };
                 setUser(userProfile);
                 if (data.is_profile_complete) {
-                    setView('DASHBOARD');
+                    // Check for subdomain/URL routing or default to dashboard
+                    const intendedView = determineInitialView();
+                    setView(intendedView || 'DASHBOARD');
                     fetchHistory(userId);
                 } else {
                     setView('PROFILE_SETUP');
                 }
             } else {
                 // Profile doesn't exist in table yet, so they need to setup.
-                // We create a temporary user object to render the setup modal
                 const newUser: UserProfile = {
                     name: metadata.full_name || email.split('@')[0],
                     email: email,
@@ -492,12 +518,27 @@ export default function App() {
         }
         setCurrentCarousel(null);
         setView('DASHBOARD');
+        
+        // Update URL to reflect dashboard without causing reload
+        if (window.location.hostname.includes('generator')) {
+             // If we are on a subdomain setup, we'd typically assign window.location.href here
+             // but for single page navigation smoothness, we stick to state unless specified
+        } else {
+             const url = new URL(window.location.href);
+             url.searchParams.set('view', 'dashboard');
+             window.history.pushState({}, '', url);
+        }
     }
 
     const startNewCarousel = () => {
         setCurrentCarousel(null);
         setSelectedSlideId(null);
         setView('GENERATOR');
+        
+        // Update URL
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', 'generator');
+        window.history.pushState({}, '', url);
     };
 
     const handleEditCarousel = (carouselId: string) => {
@@ -507,6 +548,10 @@ export default function App() {
             setCurrentTopic(carouselToEdit.title);
             setSelectedSlideId(carouselToEdit.slides[0]?.id || null);
             setView('GENERATOR');
+            
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', 'generator');
+            window.history.pushState({}, '', url);
         }
     };
     
@@ -1153,6 +1198,7 @@ export default function App() {
                 currentView={view}
                 onNavigate={(v) => {
                     if (v === 'DASHBOARD') goToDashboard();
+                    else if (v === 'GENERATOR') startNewCarousel();
                     else setView(v);
                 }}
             />

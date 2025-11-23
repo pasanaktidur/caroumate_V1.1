@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -187,6 +186,10 @@ export default function App() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (!mounted) return;
             if (session?.user) {
+                // Clean up URL hash if present (contains access_token)
+                if (window.location.hash && window.location.hash.includes('access_token')) {
+                    window.history.replaceState(null, '', window.location.pathname);
+                }
                 fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
             } else {
                 setView('LOGIN');

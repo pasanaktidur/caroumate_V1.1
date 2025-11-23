@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -553,6 +554,7 @@ export default function App() {
 
     const goToDashboard = () => {
         if (view === 'LOGIN' || view === 'PROFILE_SETUP') return;
+        setIsSettingsOpen(false); // Close settings if navigating
         if (currentCarousel) {
             saveCarouselToDb(currentCarousel);
         }
@@ -562,6 +564,7 @@ export default function App() {
     }
 
     const startNewCarousel = () => {
+        setIsSettingsOpen(false); // Close settings if navigating
         if (currentCarousel) {
             saveCarouselToDb(currentCarousel);
         }
@@ -1184,18 +1187,6 @@ export default function App() {
                     regeneratingPart={regeneratingPart}
                 />
             );
-            case 'SETTINGS': return (
-                <SettingsModal
-                    currentSettings={settings}
-                    onSave={(newSettings) => {
-                        handleSaveSettings(newSettings);
-                        setView(previousView);
-                    }}
-                    onClose={() => setView(previousView)}
-                    t={t}
-                    onShowTutorial={() => setView('TUTORIAL')}
-                />
-            );
             case 'TUTORIAL': return (
                 <TutorialScreen
                     onBack={() => setView('DASHBOARD')}
@@ -1292,14 +1283,14 @@ export default function App() {
             {user && user.profileComplete && view !== 'LOADING' && (
                 <MobileFooter
                     currentView={view}
+                    isSettingsOpen={isSettingsOpen}
                     onNavigate={(targetView) => {
                         if (targetView === 'DASHBOARD') {
                             goToDashboard();
                         } else if (targetView === 'GENERATOR') {
                             startNewCarousel();
                         } else if (targetView === 'SETTINGS') {
-                            setPreviousView(view);
-                            setView('SETTINGS');
+                            setIsSettingsOpen(true);
                         } else {
                             setView(targetView);
                         }

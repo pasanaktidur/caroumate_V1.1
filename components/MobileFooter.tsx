@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { AppView } from '../types';
 import type { TFunction } from '../App';
@@ -7,7 +8,8 @@ export const MobileFooter: React.FC<{
     currentView: AppView;
     onNavigate: (view: AppView) => void;
     t: TFunction;
-}> = ({ currentView, onNavigate, t }) => {
+    isSettingsOpen?: boolean;
+}> = ({ currentView, onNavigate, t, isSettingsOpen }) => {
     
     const navItems = [
         { view: 'DASHBOARD' as AppView, label: t('dashboardTitle'), icon: <HomeIcon className="w-6 h-6 mx-auto mb-1" /> },
@@ -22,7 +24,7 @@ export const MobileFooter: React.FC<{
                         key={item.view}
                         onClick={() => onNavigate(item.view)}
                         className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-colors duration-200 ${
-                            currentView === item.view
+                            currentView === item.view && !isSettingsOpen
                                 ? 'text-primary-600 dark:text-primary-400'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
                         }`}
@@ -35,11 +37,11 @@ export const MobileFooter: React.FC<{
                  <button
                     onClick={() => onNavigate('SETTINGS')}
                     className={`flex flex-col items-center justify-center w-full h-full text-xs font-medium transition-colors duration-200 ${
-                        currentView === 'SETTINGS'
+                        isSettingsOpen
                             ? 'text-primary-600 dark:text-primary-400'
                             : 'text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400'
                     }`}
-                    aria-current={currentView === 'SETTINGS' ? 'page' : undefined}
+                    aria-current={isSettingsOpen ? 'page' : undefined}
                     aria-label={t('settingsAriaLabel')}
                 >
                     <SettingsIcon className="w-6 h-6 mx-auto mb-1" />

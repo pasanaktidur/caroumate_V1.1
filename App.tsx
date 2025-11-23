@@ -141,22 +141,17 @@ export default function App() {
         return text;
     }, [language]);
 
-    // --- Subdomain & URL Routing Logic ---
+    // --- URL Routing Logic ---
     const determineInitialView = (): AppView | null => {
         if (typeof window === 'undefined') return null;
 
-        const hostname = window.location.hostname;
-        const parts = hostname.split('.');
+        const path = window.location.pathname.toLowerCase();
         
-        // Check for subdomains (e.g., dashboard.site.com, generator.site.com)
-        // Ignores 'www' and assumes standard structure
-        if (parts.length >= 2) {
-             const subdomain = parts[0].toLowerCase();
-             if (subdomain === 'dashboard') return 'DASHBOARD';
-             if (subdomain === 'generator') return 'GENERATOR';
-        }
+        // Path-based routing
+        if (path.startsWith('/dashboard')) return 'DASHBOARD';
+        if (path.startsWith('/generator')) return 'GENERATOR';
 
-        // Fallback: Check URL Query Params (e.g. ?view=generator)
+        // Fallback: Check URL Query Params
         const params = new URLSearchParams(window.location.search);
         const viewParam = params.get('view');
         if (viewParam === 'dashboard') return 'DASHBOARD';
@@ -164,6 +159,19 @@ export default function App() {
         
         return null;
     };
+
+    // Handle Browser Back/Forward Buttons
+    React.useEffect(() => {
+        const handlePopState = () => {
+            const view = determineInitialView();
+            if (view && user?.profileComplete) {
+                setView(view);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [user]);
 
     // --- Supabase Authentication & Data Sync ---
 
@@ -212,6 +220,7 @@ export default function App() {
             if (session?.user) {
                 // Clean up URL hash if present (contains access_token)
                 if (window.location.hash && window.location.hash.includes('access_token')) {
+                    // Replace state to clear hash but keep pathname
                     window.history.replaceState(null, '', window.location.pathname);
                 }
                 fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
@@ -259,7 +268,6 @@ export default function App() {
                 };
                 setUser(userProfile);
                 if (data.is_profile_complete) {
-                    // Check for subdomain/URL routing or default to dashboard
                     const intendedView = determineInitialView();
                     setView(intendedView || 'DASHBOARD');
                     fetchHistory(userId);
@@ -408,7 +416,7 @@ export default function App() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin // Ensures it comes back to the app
+                    redirectTo: window.location.origin + '/dashboard' // Optional: explicit redirect
                 }
             });
             if (error) {
@@ -513,21 +521,13 @@ export default function App() {
     const goToDashboard = () => {
         if (view === 'LOGIN' || view === 'PROFILE_SETUP') return;
         if (currentCarousel) {
-            // Trigger a save before leaving
             saveCarouselToDb(currentCarousel);
         }
         setCurrentCarousel(null);
         setView('DASHBOARD');
         
-        // Update URL to reflect dashboard without causing reload
-        if (window.location.hostname.includes('generator')) {
-             // If we are on a subdomain setup, we'd typically assign window.location.href here
-             // but for single page navigation smoothness, we stick to state unless specified
-        } else {
-             const url = new URL(window.location.href);
-             url.searchParams.set('view', 'dashboard');
-             window.history.pushState({}, '', url);
-        }
+        // Push state to browser history
+        window.history.pushState(null, '', '/dashboard');
     }
 
     const startNewCarousel = () => {
@@ -535,10 +535,8 @@ export default function App() {
         setSelectedSlideId(null);
         setView('GENERATOR');
         
-        // Update URL
-        const url = new URL(window.location.href);
-        url.searchParams.set('view', 'generator');
-        window.history.pushState({}, '', url);
+        // Push state to browser history
+        window.history.pushState(null, '', '/generator');
     };
 
     const handleEditCarousel = (carouselId: string) => {
@@ -549,9 +547,8 @@ export default function App() {
             setSelectedSlideId(carouselToEdit.slides[0]?.id || null);
             setView('GENERATOR');
             
-            const url = new URL(window.location.href);
-            url.searchParams.set('view', 'generator');
-            window.history.pushState({}, '', url);
+            // Push state
+            window.history.pushState(null, '', '/generator');
         }
     };
     
@@ -563,7 +560,6 @@ export default function App() {
             const { error } = await supabase.from('carousels').delete().eq('id', carouselId);
             if (error) {
                 console.error("Delete failed:", error);
-                // Revert or show error (simplified here)
                 fetchHistory((await supabase.auth.getUser()).data.user!.id);
             }
         }

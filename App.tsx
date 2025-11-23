@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -410,32 +409,72 @@ export default function App() {
         setIsSettingsOpen(false);
     };
 
-    const handleLogin = async () => {
+    // Auth Handlers
+    const handleGoogleLogin = async () => {
         setError(null);
         try {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + '/dashboard' // Optional: explicit redirect
+                    redirectTo: window.location.origin + '/dashboard'
                 }
             });
             if (error) {
-                console.error("Login error:", error);
                 if (error.message?.includes("provider is not enabled")) {
-                     setError("Google Login belum diaktifkan di Dashboard Supabase Anda. Silakan aktifkan di Authentication > Providers.");
+                     setError("Google Login belum diaktifkan di Dashboard Supabase Anda.");
                 } else {
                     setError(error.message);
                 }
             }
         } catch (err: any) {
-            console.error("Login exception:", err);
             setError(err.message || "Failed to initialize login.");
+        }
+    };
+
+    const handleEmailLogin = async (email: string, password: string): Promise<boolean> => {
+        setError(null);
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) {
+                setError(error.message);
+                return false;
+            }
+            return true;
+        } catch (err: any) {
+            setError(err.message);
+            return false;
+        }
+    };
+
+    const handleEmailSignUp = async (email: string, password: string, fullName: string): Promise<boolean> => {
+        setError(null);
+        try {
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                    },
+                },
+            });
+            if (error) {
+                setError(error.message);
+                return false;
+            }
+            alert(t('checkEmailConfirmation'));
+            return true;
+        } catch (err: any) {
+            setError(err.message);
+            return false;
         }
     };
     
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        // State clearing is handled by onAuthStateChange listener
     };
 
     const handleProfileSetup = async (profile: Omit<UserProfile, 'profileComplete'>) => {
@@ -482,13 +521,9 @@ export default function App() {
             if (!confirm) return;
 
             let successCount = 0;
-            // Use a Promise.all or sequential loop. Sequential is safer to avoid rate limits or connection issues
             for (const carousel of localCarousels) {
-                // Ensure IDs are valid UUIDs. Local storage might use random strings, Supabase expects UUID.
-                // If existing IDs are not UUIDs, generate new ones.
                 const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(carousel.id);
                 
-                // Prepare clean carousel for DB
                 const cleanCarousel = {
                     ...carousel,
                     id: isUUID ? carousel.id : crypto.randomUUID(),
@@ -502,11 +537,9 @@ export default function App() {
                 successCount++;
             }
 
-            // Clear local storage after success
             localStorage.removeItem(HISTORY_STORAGE_KEY);
             setLocalHistoryCount(0);
             
-            // Refresh fetching
             const userId = (await supabase.auth.getUser()).data.user?.id;
             if (userId) fetchHistory(userId);
 
@@ -525,17 +558,16 @@ export default function App() {
         }
         setCurrentCarousel(null);
         setView('DASHBOARD');
-        
-        // Push state to browser history
         window.history.pushState(null, '', '/dashboard');
     }
 
     const startNewCarousel = () => {
+        if (currentCarousel) {
+            saveCarouselToDb(currentCarousel);
+        }
         setCurrentCarousel(null);
         setSelectedSlideId(null);
         setView('GENERATOR');
-        
-        // Push state to browser history
         window.history.pushState(null, '', '/generator');
     };
 
@@ -546,17 +578,13 @@ export default function App() {
             setCurrentTopic(carouselToEdit.title);
             setSelectedSlideId(carouselToEdit.slides[0]?.id || null);
             setView('GENERATOR');
-            
-            // Push state
             window.history.pushState(null, '', '/generator');
         }
     };
     
     const handleDeleteCarousel = async (carouselId: string) => {
         if (window.confirm(t('deleteCarouselConfirm'))) {
-            // Optimistic update
             setCarouselHistory(prev => prev.filter(c => c.id !== carouselId));
-            
             const { error } = await supabase.from('carousels').delete().eq('id', carouselId);
             if (error) {
                 console.error("Delete failed:", error);
@@ -590,7 +618,6 @@ export default function App() {
                 console.error(`Failed to generate image for slide ${i + 1}:`, imageErr);
             }
         }
-        // Final Save
         await saveCarouselToDb(updatedCarousel);
         return updatedCarousel;
     };
@@ -613,7 +640,6 @@ export default function App() {
             
             try {
                 const videoUrl = await generateVideo(slide.visual_prompt, carousel.preferences.aspectRatio, settings);
-                
                 updatedCarousel = {
                     ...updatedCarousel,
                     slides: updatedCarousel.slides.map(s => s.id === slide.id ? { ...s, backgroundImage: videoUrl } : s)
@@ -663,8 +689,6 @@ export default function App() {
             
             setCurrentCarousel(newCarousel);
             setSelectedSlideId(initialSlides[0]?.id ?? null);
-            
-            // Save initial structure to DB
             await saveCarouselToDb(newCarousel);
 
             if (magicCreate) {
@@ -971,11 +995,7 @@ export default function App() {
             if (!prev) return null;
             const updatedSlides = prev.slides.map(s => s.id === slideId ? { ...s, ...updates } : s);
             const newCarousel = { ...prev, slides: updatedSlides };
-            
-            // Debounce the DB save or save immediately if critical? 
-            // For now, we save on every update for data integrity in this migration logic
             saveCarouselToDb(newCarousel); 
-            
             return newCarousel;
         });
     };
@@ -996,7 +1016,6 @@ export default function App() {
         handleUpdateSlide(slideId, { backgroundImage: undefined });
     };
 
-    // Updated to sync with DB
     const handleUpdateCarouselPreferences = (updates: Partial<DesignPreferences>, topicValue: string) => {
         setCurrentCarousel(prev => {
             if (prev) {
@@ -1004,7 +1023,6 @@ export default function App() {
                 saveCarouselToDb(newCarousel);
                 return newCarousel;
             }
-            // Temp creation for new carousel before generation is mostly local state until generation happens
             return {
                 id: crypto.randomUUID(),
                 title: topicValue,
@@ -1101,7 +1119,16 @@ export default function App() {
     const renderContent = () => {
         switch (view) {
             case 'LOADING': return <div className="flex h-full items-center justify-center"><Loader text="" /></div>;
-            case 'LOGIN': return <LoginScreen onLogin={handleLogin} t={t} error={error} />;
+            case 'LOGIN': return (
+                <LoginScreen 
+                    onGoogleLogin={handleGoogleLogin} 
+                    onEmailLogin={handleEmailLogin}
+                    onEmailSignUp={handleEmailSignUp}
+                    t={t} 
+                    error={error} 
+                    onErrorDismiss={() => setError(null)}
+                />
+            );
             case 'PROFILE_SETUP': return <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />;
             case 'DASHBOARD': return (
                 <Dashboard
@@ -1175,7 +1202,16 @@ export default function App() {
                     content={translations[language].tutorial}
                 />
             );
-            default: return <LoginScreen onLogin={handleLogin} t={t} error={error} />;
+            default: return (
+                <LoginScreen 
+                    onGoogleLogin={handleGoogleLogin} 
+                    onEmailLogin={handleEmailLogin}
+                    onEmailSignUp={handleEmailSignUp}
+                    t={t} 
+                    error={error} 
+                    onErrorDismiss={() => setError(null)}
+                />
+            );
         }
     };
 
@@ -1259,6 +1295,8 @@ export default function App() {
                     onNavigate={(targetView) => {
                         if (targetView === 'DASHBOARD') {
                             goToDashboard();
+                        } else if (targetView === 'GENERATOR') {
+                            startNewCarousel();
                         } else if (targetView === 'SETTINGS') {
                             setPreviousView(view);
                             setView('SETTINGS');

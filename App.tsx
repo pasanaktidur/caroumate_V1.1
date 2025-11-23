@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import { AIModel } from './types';
@@ -1293,10 +1292,11 @@ export default function App() {
             <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
                 <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
                     {renderContent()}
+                    {/* Footer moved inside main for scrollability */}
+                    {view !== 'LOADING' && (
+                        <Footer className={view === 'GENERATOR' ? 'block lg:hidden' : 'block'} />
+                    )}
                 </main>
-                {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && view !== 'SIGNUP' && (
-                    <Footer className={!user ? "block" : "hidden md:block"} />
-                )}
             </div>
 
             {/* Modals */}

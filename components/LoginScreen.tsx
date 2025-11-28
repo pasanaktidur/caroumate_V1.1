@@ -3,6 +3,7 @@ import type { TFunction } from '../App';
 import { SparklesIcon, SettingsIcon, DownloadIcon, GoogleIcon, LoaderIcon } from './icons';
 
 const SampleCarouselPreview: React.FC = () => {
+    // ... (SampleCarouselPreview code remains same)
     const slideStyle = "h-[180px] sm:h-[240px] w-[140px] sm:w-[190px] flex-shrink-0 relative flex flex-col justify-center items-center p-4 text-center rounded-2xl shadow-2xl border border-white/10 backdrop-blur-sm";
 
     return (
@@ -82,18 +83,18 @@ export const LoginScreen: React.FC<{
     };
 
     return (
-        <div className="bg-white dark:bg-gray-950 min-h-screen flex flex-col">
-            <main className="flex-grow flex flex-col justify-center">
+        <div className="bg-white dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden">
+            <main className="flex-grow flex flex-col justify-center w-full">
                 {/* Hero Section */}
                 <div className="relative overflow-hidden w-full flex-grow flex items-center">
-                    {/* Background Pattern */}
+                    {/* Background Pattern - Fixed width changed to responsive to prevent desktop mode triggering */}
                     <div className="absolute inset-0 bg-grid-pattern dark:bg-grid-pattern-dark opacity-[0.03] dark:opacity-[0.05] pointer-events-none"></div>
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-[100%] blur-[100px] pointer-events-none"></div>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] sm:w-[1000px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-[100%] blur-[100px] pointer-events-none"></div>
 
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 lg:py-16">
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                             {/* Left Content (Text + Form) */}
-                            <div className="text-center lg:text-left lg:col-span-6 flex flex-col items-center lg:items-start">
+                            <div className="text-center lg:text-left lg:col-span-6 flex flex-col items-center lg:items-start w-full">
                                 
                                 {/* Logo & Tagline */}
                                 <div className="mb-8">
@@ -205,7 +206,7 @@ export const LoginScreen: React.FC<{
                                 </div>
                             </div>
                             
-                            {/* Right Content (Preview) - Hidden on mobile */}
+                            {/* Right Content (Preview) - Hidden on mobile if desired, or stacked */}
                             <div className="mt-12 lg:mt-0 lg:col-span-6 flex justify-center lg:justify-end hidden lg:flex">
                                 <SampleCarouselPreview />
                             </div>

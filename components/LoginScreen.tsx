@@ -3,14 +3,13 @@ import type { TFunction } from '../App';
 import { SparklesIcon, SettingsIcon, DownloadIcon, GoogleIcon, LoaderIcon } from './icons';
 
 const SampleCarouselPreview: React.FC = () => {
-    // ... (SampleCarouselPreview code remains same)
     const slideStyle = "h-[180px] sm:h-[240px] w-[140px] sm:w-[190px] flex-shrink-0 relative flex flex-col justify-center items-center p-4 text-center rounded-2xl shadow-2xl border border-white/10 backdrop-blur-sm";
 
     return (
         <div className="relative mx-auto w-full max-w-md perspective-1000 transform scale-75 sm:scale-100 origin-center">
-            {/* ... (rest of visual) */}
-            <div className="absolute -top-20 -left-20 w-64 h-64 bg-primary-400/20 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 -right-20 w-72 h-72 bg-accent-400/20 rounded-full blur-3xl animate-pulse delay-700"></div>
+            {/* Background blobs for preview */}
+            <div className="absolute -top-20 -left-20 w-48 h-48 sm:w-64 sm:h-64 bg-primary-400/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 -right-20 w-56 h-56 sm:w-72 sm:h-72 bg-accent-400/20 rounded-full blur-3xl animate-pulse delay-700"></div>
 
             {/* Phone Mockup */}
             <div className="relative mx-auto bg-gray-900 border-[10px] border-gray-900 rounded-[2.5rem] h-[440px] w-[220px] sm:h-[540px] sm:w-[270px] shadow-2xl shadow-primary-900/50 transform rotate-[-5deg] hover:rotate-0 transition-transform duration-500 z-10">
@@ -87,9 +86,10 @@ export const LoginScreen: React.FC<{
             <main className="flex-grow flex flex-col justify-center w-full">
                 {/* Hero Section */}
                 <div className="relative overflow-hidden w-full flex-grow flex items-center">
-                    {/* Background Pattern - Responsive width to prevent overflow */}
+                    {/* Background Pattern - Use w-full and overflow hidden on parent to avoid horizontal scroll */}
                     <div className="absolute inset-0 bg-grid-pattern dark:bg-grid-pattern-dark opacity-[0.03] dark:opacity-[0.05] pointer-events-none"></div>
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-[100%] blur-[80px] sm:blur-[100px] pointer-events-none"></div>
+                    {/* Reduced width and used transform to center without overflowing */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-full blur-[80px] sm:blur-[100px] pointer-events-none"></div>
 
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 lg:py-16">
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

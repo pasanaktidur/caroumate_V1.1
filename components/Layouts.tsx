@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './Header';
@@ -53,7 +52,6 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
                 theme={props.theme}
                 onToggleTheme={props.onToggleTheme}
                 t={props.t}
-                // Header will handle its own navigation via router hooks inside (if refactored) or we pass current path
             />
             <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
                 <main className="flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar">

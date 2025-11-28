@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import type { Carousel, SlideData, DesignPreferences, AppSettings } from './types';
@@ -32,6 +31,11 @@ export type TFunction = (key: string, params?: { [key: string]: any }) => string
 
 export default function App() {
     const navigate = useNavigate();
+
+    // Debugging Log
+    React.useEffect(() => {
+        console.log("CarouMate App Mounted Successfully");
+    }, []);
 
     // --- Auth & Data Hooks ---
     const { 
@@ -152,7 +156,6 @@ export default function App() {
     // --- Helper: Parse Errors ---
     const parseAndDisplayError = React.useCallback((error: any): string => {
         let errorMessage = error.message || t('errorUnknown');
-        // ... (Existing error parsing logic remains the same)
         if (errorMessage.startsWith('{') && errorMessage.endsWith('}')) {
             try {
                 const errorObj = JSON.parse(errorMessage);
@@ -186,21 +189,16 @@ export default function App() {
         return errorMessage;
     }, [t]);
 
-    // --- Navigation Helpers ---
     const goToDashboard = () => {
         setIsSettingsOpen(false); 
-        if (currentCarousel) {
-            saveCarouselToDb(currentCarousel);
-        }
+        if (currentCarousel) saveCarouselToDb(currentCarousel);
         setCurrentCarousel(null);
         navigate('/dashboard');
     }
 
     const startNewCarousel = () => {
         setIsSettingsOpen(false); 
-        if (currentCarousel) {
-            saveCarouselToDb(currentCarousel);
-        }
+        if (currentCarousel) saveCarouselToDb(currentCarousel);
         setCurrentCarousel(null);
         setSelectedSlideId(null);
         navigate('/generator');
@@ -217,18 +215,14 @@ export default function App() {
     };
 
     const deleteCarousel = async (id: string) => {
-        if (window.confirm(t('deleteCarouselConfirm'))) {
-            await handleDeleteCarousel(id);
-        }
+        if (window.confirm(t('deleteCarouselConfirm'))) await handleDeleteCarousel(id);
     }
 
     const clearHistory = async () => {
-        if (window.confirm(t('clearHistoryConfirm'))) {
-            await handleClearHistory();
-        }
+        if (window.confirm(t('clearHistoryConfirm'))) await handleClearHistory();
     }
 
-    // --- Generation Logic Helpers ---
+    // Generation Helpers
     const executeImageGenerationForAllSlides = async (carousel: Carousel, settings: AppSettings): Promise<Carousel> => {
         let updatedCarousel = carousel;
         for (let i = 0; i < carousel.slides.length; i++) {
@@ -251,19 +245,14 @@ export default function App() {
     const executeVideoGenerationForAllSlides = async (carousel: Carousel, settings: AppSettings): Promise<void> => {
         try {
             const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
-            if (!hasKey) {
-                await (window as any).aistudio?.openSelectKey();
-            }
-        } catch (e) {
-            console.error("AI Studio helper not available.", e);
-        }
+            if (!hasKey) await (window as any).aistudio?.openSelectKey();
+        } catch (e) { console.error("AI Studio helper not available.", e); }
 
         let updatedCarousel = carousel;
         for (let i = 0; i < carousel.slides.length; i++) {
             const slide = carousel.slides[i];
             setGenerationMessage(t('generatingVideoMessage') + ` (${i + 1}/${carousel.slides.length})`);
             setIsGeneratingVideoForSlide(slide.id);
-            
             try {
                 const videoUrl = await generateVideo(slide.visual_prompt, carousel.preferences.aspectRatio, settings);
                 updatedCarousel = {
@@ -271,16 +260,14 @@ export default function App() {
                     slides: updatedCarousel.slides.map(s => s.id === slide.id ? { ...s, backgroundImage: videoUrl } : s)
                 };
                 setCurrentCarousel(updatedCarousel);
-            } catch (err: any) {
-                 console.error(`Failed to generate video for slide ${i + 1}:`, err);
-            } finally {
-                setIsGeneratingVideoForSlide(null);
-            }
+            } catch (err: any) { console.error(`Failed to generate video for slide ${i + 1}:`, err); } 
+            finally { setIsGeneratingVideoForSlide(null); }
         }
         await saveCarouselToDb(updatedCarousel);
         setGenerationMessage('');
     };
 
+    // Main Generate Handler
     const handleGenerateCarousel = React.useCallback(async (topic: string, niche: string, preferences: DesignPreferences, magicCreate: boolean) => {
         if (!user) return;
         if (!settings.apiKey) { setError(t('errorApiKeyNotConfigured')); return; }
@@ -321,7 +308,7 @@ export default function App() {
         }
     }, [user, settings, t, parseAndDisplayError, saveCarouselToDb]);
 
-    // Slide Update Helper using the Hook
+    // Update Handler
     const handleUpdateSlide = (slideId: string, updates: Partial<SlideData>) => {
         setCurrentCarousel(prev => {
             if (!prev) return null;
@@ -332,6 +319,7 @@ export default function App() {
         });
     };
 
+    // Specific Generation Handlers
     const handleGenerateImageForSlide = async (slideId: string) => {
         if (!currentCarousel) return;
         const slide = currentCarousel.slides.find(s => s.id === slideId);
@@ -342,11 +330,8 @@ export default function App() {
         try {
             const imageUrl = await generateImage(slide.visual_prompt, currentCarousel.preferences.aspectRatio, settings);
             handleUpdateSlide(slideId, { backgroundImage: imageUrl });
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsGeneratingImageForSlide(null);
-        }
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsGeneratingImageForSlide(null); }
     };
 
     const handleGenerateAllImages = async () => {
@@ -355,20 +340,14 @@ export default function App() {
         setError(null);
         try {
             await executeImageGenerationForAllSlides(currentCarousel, settings);
-        } catch(err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsGenerating(false);
-            setGenerationMessage('');
-            setIsGeneratingImageForSlide(null);
-        }
+        } catch(err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsGenerating(false); setGenerationMessage(''); setIsGeneratingImageForSlide(null); }
     };
 
     const handleGenerateVideoForSlide = async (slideId: string) => {
         if (!currentCarousel) return;
         const slide = currentCarousel.slides.find(s => s.id === slideId);
         if (!slide) return;
-
         try {
             const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
             if (!hasKey) await (window as any).aistudio?.openSelectKey();
@@ -427,7 +406,6 @@ export default function App() {
                 const slide = currentCarousel.slides.find(s => s.id === slideId);
                 if (!slide) continue;
 
-                // Temporarily reset styles for clean capture
                 const originalTransform = element.style.transform;
                 const originalTransition = element.style.transition;
                 const originalBoxShadow = element.style.boxShadow;
@@ -445,7 +423,6 @@ export default function App() {
                     const videoBlob = await videoResponse.blob();
                     const extension = videoBlob.type.split('/')[1] || 'mp4';
                     zip.file(`slide-${i + 1}.${extension}`, videoBlob);
-                    // Capture thumbnail overlay
                     const videoElement = element.querySelector('video');
                     if (videoElement) videoElement.style.visibility = 'hidden';
                     const overlayCanvas = await html2canvas(element, { allowTaint: true, useCORS: true, backgroundColor: null, scale: 2 });
@@ -463,7 +440,6 @@ export default function App() {
                     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
                     if (blob) zip.file(`slide-${i + 1}.png`, blob);
                 }
-                // Restore styles
                 element.style.transform = originalTransform;
                 element.style.transition = originalTransition;
                 element.style.boxShadow = originalBoxShadow;
@@ -490,7 +466,7 @@ export default function App() {
         }
     };
 
-    // Handlers for UI updates (bridging local state and hook logic)
+    // Design & Formatting Handlers
     const handleUpdateCarouselPreferences = (updates: Partial<DesignPreferences>, topicValue: string) => {
         setCurrentCarousel(prev => {
             if (prev) {
@@ -498,7 +474,6 @@ export default function App() {
                 saveCarouselToDb(newCarousel);
                 return newCarousel;
             }
-            // Handling case where user edits design before generating content (draft mode)
             return {
                 id: crypto.randomUUID(),
                 title: topicValue,

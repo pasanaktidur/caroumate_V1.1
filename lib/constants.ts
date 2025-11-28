@@ -1,3 +1,4 @@
+
 import type { AppSettings, Position } from '../types';
 // FIX: FontChoice and AspectRatio are enums used as values, so they must be imported as values, not types.
 import { AIModel, AspectRatio, FontChoice } from '../types';
@@ -28,6 +29,13 @@ export const defaultSettings: AppSettings = {
             color: '#111827',
             opacity: 0.75,
             position: 'bottom-right',
+            fontSize: 0.7,
+        },
+        slideNumberStyle: {
+            show: true,
+            color: '#111827',
+            opacity: 0.8,
+            position: 'top-right',
             fontSize: 0.7,
         }
     }

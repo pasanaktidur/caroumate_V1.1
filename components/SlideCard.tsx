@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import type { SlideData, DesignPreferences, TextStyle, Position } from '../types';
 import { DesignStyle } from '../types';

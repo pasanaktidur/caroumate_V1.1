@@ -1,31 +1,52 @@
 
 import * as React from 'react';
-import type { AppSettings, BrandKit } from '../types';
+import type { AppSettings, BrandKit, UserProfile } from '../types';
 import { AIModel, FontChoice } from '../types';
 import type { TFunction } from '../App';
 import { defaultSettings } from '../lib/constants';
-import { PaletteIcon, SettingsIcon, UploadIcon, SparklesIcon, TrashIcon } from './icons';
+import { PaletteIcon, SettingsIcon, UploadIcon, SparklesIcon, TrashIcon, AvatarIcon, PlusIcon } from './icons';
 import { FontSelector, ColorInput, PositionSelector } from './ui';
 
-type SettingsTab = 'general' | 'brandkit';
+type SettingsTab = 'general' | 'brandkit' | 'profile';
 
 export const SettingsModal: React.FC<{
     currentSettings: AppSettings;
+    user: UserProfile | null;
     onClose: () => void;
     onSave: (settings: AppSettings) => void;
+    onUpdateUser: (updates: Partial<UserProfile>) => void;
     t: TFunction;
     onShowTutorial: () => void;
-}> = ({ currentSettings, onClose, onSave, t, onShowTutorial }) => {
+}> = ({ currentSettings, user, onClose, onSave, onUpdateUser, t, onShowTutorial }) => {
     const [settings, setSettings] = React.useState(currentSettings);
     const [activeTab, setActiveTab] = React.useState<SettingsTab>('general');
     const [saved, setSaved] = React.useState(false);
+    
+    // Profile State
+    const [profileName, setProfileName] = React.useState(user?.name || '');
+    const [niches, setNiches] = React.useState<string[]>(user?.niche || []);
+    const [newNiche, setNewNiche] = React.useState('');
 
     const handleSave = () => {
         onSave(settings);
+        if (user && (profileName !== user.name || JSON.stringify(niches) !== JSON.stringify(user.niche))) {
+            onUpdateUser({ name: profileName, niche: niches });
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
     
+    const handleAddNiche = () => {
+        if (newNiche.trim()) {
+            setNiches([...niches, newNiche.trim()]);
+            setNewNiche('');
+        }
+    };
+
+    const handleRemoveNiche = (index: number) => {
+        setNiches(niches.filter((_, i) => i !== index));
+    };
+
     const handleBrandKitChange = (field: keyof BrandKit, value: any) => {
         setSettings(prev => ({
             ...prev,
@@ -77,6 +98,19 @@ export const SettingsModal: React.FC<{
         }));
     };
 
+    const handleSlideNumberStyleChange = (updates: Partial<BrandKit['slideNumberStyle']>) => {
+        setSettings(prev => ({
+            ...prev,
+            brandKit: {
+                ...(prev.brandKit || defaultSettings.brandKit!),
+                slideNumberStyle: {
+                    ...(prev.brandKit?.slideNumberStyle || defaultSettings.brandKit!.slideNumberStyle!),
+                    ...updates
+                }
+            }
+        }));
+    };
+
     const getModelDisplayName = (model: string) => {
         switch (model) {
             case AIModel.GEMINI_2_5_FLASH:
@@ -115,7 +149,18 @@ export const SettingsModal: React.FC<{
                         }`}
                     >
                         <SettingsIcon className="w-3.5 h-3.5" />
-                        <span>General & AI</span>
+                        <span>General</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('profile')}
+                        className={`flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                            activeTab === 'profile'
+                                ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                    >
+                        <AvatarIcon className="w-3.5 h-3.5" />
+                        <span>{t('settingsProfileTab')}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('brandkit')}
@@ -200,6 +245,65 @@ export const SettingsModal: React.FC<{
                                     className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-0 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 transition-shadow resize-none text-sm"
                                     rows={4}
                                 />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'profile' && user && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {/* Display Name */}
+                            <div className="space-y-2">
+                                <label htmlFor="profileName" className="block text-xs font-bold text-gray-900 dark:text-white">
+                                    {t('settingsProfileName')}
+                                </label>
+                                <input
+                                    type="text"
+                                    id="profileName"
+                                    value={profileName}
+                                    onChange={e => setProfileName(e.target.value)}
+                                    className="block w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-0 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm"
+                                />
+                            </div>
+
+                            <hr className="border-gray-100 dark:border-gray-800" />
+
+                            {/* Niches */}
+                            <div className="space-y-3">
+                                <label className="block text-xs font-bold text-gray-900 dark:text-white">
+                                    {t('settingsProfileNiche')}
+                                </label>
+                                <div className="space-y-2">
+                                    {niches.map((niche, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <div className="flex-grow px-4 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-xl text-sm text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700">
+                                                {niche}
+                                            </div>
+                                            <button 
+                                                onClick={() => handleRemoveNiche(index)} 
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <input
+                                            type="text"
+                                            value={newNiche}
+                                            onChange={e => setNewNiche(e.target.value)}
+                                            placeholder={t('settingsAddNichePlaceholder')}
+                                            className="flex-grow px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500 text-sm"
+                                            onKeyDown={e => e.key === 'Enter' && handleAddNiche()}
+                                        />
+                                        <button 
+                                            onClick={handleAddNiche}
+                                            disabled={!newNiche.trim()}
+                                            className="p-2 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-900/50 rounded-xl disabled:opacity-50 transition-colors"
+                                        >
+                                            <PlusIcon className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -337,6 +441,60 @@ export const SettingsModal: React.FC<{
                                         label={t('brandingPositionLabel')}
                                         value={settings.brandKit?.brandingStyle?.position ?? 'bottom-right'}
                                         onChange={v => handleBrandingStyleChange({ position: v })}
+                                        t={t}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Slide Numbers (New) */}
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                <h4 className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">{t('brandKitSlideNumberTitle')}</h4>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <ColorInput 
+                                            id="brandKitSlideNumberColor" 
+                                            label={t('slideNumberColorLabel')}
+                                            value={settings.brandKit?.slideNumberStyle?.color ?? '#000000'}
+                                            onChange={v => handleSlideNumberStyleChange({ color: v })}
+                                        />
+                                        <div>
+                                            <label htmlFor="brandKitSlideNumberSize" className="block text-[10px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">{t('slideNumberSizeLabel')}</label>
+                                            <input
+                                                type="number"
+                                                id="brandKitSlideNumberSize"
+                                                value={settings.brandKit?.slideNumberStyle?.fontSize ? settings.brandKit.slideNumberStyle.fontSize * 10 : ''}
+                                                onChange={e => handleSlideNumberStyleChange({ fontSize: parseFloat(e.target.value) / 10 })}
+                                                className="block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 text-xs"
+                                                step="1"
+                                                min="5"
+                                                max="30"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label htmlFor="brandKitSlideNumberOpacity" className="block text-[10px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">{t('slideNumberOpacityLabel')}</label>
+                                        <div className="flex items-center space-x-3 bg-white dark:bg-gray-700 p-2.5 rounded-xl border border-gray-200 dark:border-gray-600">
+                                            <input
+                                                id="brandKitSlideNumberOpacity"
+                                                type="range"
+                                                min="0"
+                                                max="1"
+                                                step="0.05"
+                                                value={settings.brandKit?.slideNumberStyle?.opacity ?? 0.8}
+                                                onChange={e => handleSlideNumberStyleChange({ opacity: parseFloat(e.target.value) })}
+                                                className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-600 accent-primary-600"
+                                            />
+                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 w-10 text-right">
+                                                {Math.round((settings.brandKit?.slideNumberStyle?.opacity ?? 0.8) * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <PositionSelector
+                                        label={t('slideNumberPositionLabel')}
+                                        value={settings.brandKit?.slideNumberStyle?.position ?? 'top-right'}
+                                        onChange={v => handleSlideNumberStyleChange({ position: v })}
                                         t={t}
                                     />
                                 </div>

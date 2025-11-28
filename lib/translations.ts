@@ -174,6 +174,10 @@ export const translations = {
 
     // SettingsModal
     settingsTitle: 'Settings',
+    settingsProfileTab: 'Profile', // NEW
+    settingsProfileName: 'Display Name', // NEW
+    settingsProfileNiche: 'Content Niches', // NEW
+    settingsAddNichePlaceholder: 'Add new niche...', // NEW
     aiModelLabel: 'AI Model',
     aiModelHint: "Choose your preferred AI model. 'Flash' is faster, while 'Pro' is more powerful for complex topics.",
     apiKeyLabel: 'Google AI API Key',
@@ -197,6 +201,7 @@ export const translations = {
     brandKitLogo: 'Logo',
     brandKitUploadLogo: 'Upload Logo',
     brandKitBrandingText: 'Branding Text',
+    brandKitSlideNumberTitle: 'Slide Number Style', // NEW
     settingsBrandingPlaceholder: '@username',
     
     // Tutorial Screen
@@ -439,6 +444,10 @@ export const translations = {
 
     // SettingsModal
     settingsTitle: 'Pengaturan',
+    settingsProfileTab: 'Profil', // NEW
+    settingsProfileName: 'Nama Tampilan', // NEW
+    settingsProfileNiche: 'Niche Konten', // NEW
+    settingsAddNichePlaceholder: 'Tambah niche baru...', // NEW
     aiModelLabel: 'Model AI',
     aiModelHint: "Pilih model AI yang Anda inginkan. 'Flash' lebih cepat, sedangkan 'Pro' lebih kuat untuk topik yang kompleks.",
     apiKeyLabel: 'Kunci API Google AI',
@@ -462,6 +471,7 @@ export const translations = {
     brandKitLogo: 'Logo',
     brandKitUploadLogo: 'Unggah Logo',
     brandKitBrandingText: 'Teks Branding',
+    brandKitSlideNumberTitle: 'Gaya Nomor Slide', // NEW
     settingsBrandingPlaceholder: '@username',
 
     // Tutorial Screen

@@ -1,22 +1,22 @@
 
-
 import * as React from 'react';
-import type { AppView, UserProfile, Carousel, SlideData, DesignPreferences, AppSettings } from './types';
-import { AIModel } from './types';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import type { Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { 
-    generateCarouselContent, getAiAssistance, generateCaption, generateImage, 
+    generateCarouselContent, generateCaption, generateImage, 
     regenerateSlideContent, generateThreadFromCarousel, generateVideo, editImage, getDesignSuggestion 
 } from './services/geminiService';
-import { supabase } from './lib/supabaseClient';
 
 import { translations } from './lib/translations';
-import { SETTINGS_STORAGE_KEY, DOWNLOADS_STORAGE_KEY, HISTORY_STORAGE_KEY, defaultSettings } from './lib/constants';
+import { SETTINGS_STORAGE_KEY, defaultSettings } from './lib/constants';
 
-import { Header } from './components/Header';
-import { MobileFooter } from './components/MobileFooter';
-import { Footer } from './components/Footer';
+// Hooks
+import { useAuth } from './hooks/useAuth';
+import { useCarouselHistory } from './hooks/useCarouselHistory';
+
+import { MainLayout } from './components/Layouts';
 import { LoginScreen } from './components/LoginScreen';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
 import { Dashboard } from './components/Dashboard';
@@ -31,6 +31,21 @@ import { Loader } from './components/Loader';
 export type TFunction = (key: string, params?: { [key: string]: any }) => string;
 
 export default function App() {
+    const navigate = useNavigate();
+
+    // --- Auth & Data Hooks ---
+    const { 
+        user, isLoadingUser, authError, setAuthError, 
+        handleGoogleLogin, handleEmailLogin, handleEmailSignUp, handleLogout, handleProfileSetup,
+        updateUser 
+    } = useAuth();
+
+    const {
+        carouselHistory, localHistoryCount, downloadCount, historyError, setHistoryError,
+        saveCarouselToDb, handleDeleteCarousel, handleClearHistory, handleMigrateLocalData, incrementDownloadCount
+    } = useCarouselHistory(user);
+
+    // --- Global UI State ---
     const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
         if (typeof window !== 'undefined' && localStorage.getItem('theme')) {
             return localStorage.getItem('theme') as 'light' | 'dark';
@@ -55,23 +70,20 @@ export default function App() {
     };
 
     const [language, setLanguage] = React.useState<keyof typeof translations>('id');
+    const handleLanguageChange = () => setLanguage(lang => lang === 'en' ? 'id' : 'en');
     
-    // --- State Initialization ---
-    const [user, setUser] = React.useState<UserProfile | null>(null);
-    const [view, setView] = React.useState<AppView>('LOADING'); // Start in LOADING state
+    const t: TFunction = React.useCallback((key: string, params?: { [key: string]: any }) => {
+        let text = (translations[language] as any)[key] || key;
+        if (params) {
+            Object.keys(params).forEach(pKey => {
+                const regex = new RegExp(`{{${pKey}}}`, 'g');
+                text = text.replace(regex, String(params[pKey]));
+            });
+        }
+        return text;
+    }, [language]);
 
-    const [previousView, setPreviousView] = React.useState<AppView>('DASHBOARD');
-    
-    const [carouselHistory, setCarouselHistory] = React.useState<Carousel[]>([]);
-    const [localHistoryCount, setLocalHistoryCount] = React.useState<number>(0);
-    
-    const [downloadCount, setDownloadCount] = React.useState<number>(() => {
-        try {
-            const savedCount = localStorage.getItem(DOWNLOADS_STORAGE_KEY);
-            return savedCount ? JSON.parse(savedCount) : 0;
-        } catch { return 0; }
-    });
-
+    // --- Editor State ---
     const [currentCarousel, setCurrentCarousel] = React.useState<Carousel | null>(null);
     const [selectedSlideId, setSelectedSlideId] = React.useState<string | null>(null);
     const [isGenerating, setIsGenerating] = React.useState(false);
@@ -92,7 +104,19 @@ export default function App() {
     const [generatedThread, setGeneratedThread] = React.useState('');
     const [isSuggestingDesign, setIsSuggestingDesign] = React.useState(false);
 
-    // Settings remain in localStorage for this version, except strict data
+    // Sync hook errors to local UI error state
+    React.useEffect(() => {
+        if (authError) setError(authError);
+        if (historyError) setError(historyError);
+    }, [authError, historyError]);
+
+    const dismissError = () => {
+        setError(null);
+        setAuthError(null);
+        setHistoryError(null);
+    };
+
+    // Settings
     const [settings, setSettings] = React.useState<AppSettings>(() => {
         try {
             const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -106,6 +130,7 @@ export default function App() {
                     colors: { ...defaultSettings.brandKit!.colors, ...(parsedSettings.brandKit?.colors || {}) },
                     fonts: { ...defaultSettings.brandKit!.fonts, ...(parsedSettings.brandKit?.fonts || {}) },
                     brandingStyle: { ...defaultSettings.brandKit!.brandingStyle, ...(parsedSettings.brandKit?.brandingStyle || {}) },
+                    slideNumberStyle: { ...defaultSettings.brandKit!.slideNumberStyle, ...(parsedSettings.brandKit?.slideNumberStyle || {}) },
                 }
             };
         } catch (error) {
@@ -113,297 +138,21 @@ export default function App() {
             return defaultSettings;
         }
     });
-    
-    // Check for local storage data on load
-    React.useEffect(() => {
+
+    const handleSaveSettings = (newSettings: AppSettings) => {
+        setSettings(newSettings);
         try {
-            const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    setLocalHistoryCount(parsed.length);
-                }
-            }
-        } catch (e) {}
-    }, []);
-
-    const handleLanguageChange = () => {
-        setLanguage(lang => lang === 'en' ? 'id' : 'en');
-    };
-    
-    const t: TFunction = React.useCallback((key: string, params?: { [key: string]: any }) => {
-        let text = (translations[language] as any)[key] || key;
-        if (params) {
-            Object.keys(params).forEach(pKey => {
-                const regex = new RegExp(`{{${pKey}}}`, 'g');
-                text = text.replace(regex, String(params[pKey]));
-            });
+            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
+        } catch (error) {
+            console.error("Could not save settings:", error);
         }
-        return text;
-    }, [language]);
-
-    // --- URL Routing Logic ---
-    const determineInitialView = (): AppView | null => {
-        if (typeof window === 'undefined') return null;
-
-        const path = window.location.pathname.toLowerCase();
-        
-        // Path-based routing
-        if (path.startsWith('/dashboard')) return 'DASHBOARD';
-        if (path.startsWith('/generator')) return 'GENERATOR';
-        if (path.startsWith('/login')) return 'LOGIN';
-        if (path.startsWith('/signup')) return 'SIGNUP';
-
-        // Fallback: Check URL Query Params
-        const params = new URLSearchParams(window.location.search);
-        const viewParam = params.get('view');
-        if (viewParam === 'dashboard') return 'DASHBOARD';
-        if (viewParam === 'generator') return 'GENERATOR';
-        
-        return null;
+        setIsSettingsOpen(false);
     };
 
-    // Handle Browser Back/Forward Buttons
-    React.useEffect(() => {
-        const handlePopState = () => {
-            const view = determineInitialView();
-            if (view) {
-                if (user?.profileComplete) {
-                     setView(view === 'LOGIN' || view === 'SIGNUP' ? 'DASHBOARD' : view);
-                } else {
-                     setView(view === 'SIGNUP' ? 'SIGNUP' : 'LOGIN');
-                }
-            }
-        };
-
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, [user]);
-
-    // --- Supabase Authentication & Data Sync ---
-
-    // Fetch carousels from Supabase
-    const fetchHistory = React.useCallback(async (userId: string) => {
-        try {
-            // Fetch carousels and their slides
-            const { data: carouselsData, error: carouselsError } = await supabase
-                .from('carousels')
-                .select('*, slides(*)')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false });
-
-            if (carouselsError) throw carouselsError;
-
-            if (carouselsData) {
-                const formattedHistory: Carousel[] = carouselsData.map(c => ({
-                    id: c.id,
-                    title: c.title,
-                    createdAt: c.created_at,
-                    category: c.category,
-                    preferences: c.preferences,
-                    slides: c.slides.sort((a: any, b: any) => a.order - b.order).map((s: any) => ({
-                        id: s.id,
-                        headline: s.headline,
-                        body: s.body,
-                        visual_prompt: s.visual_prompt,
-                        backgroundImage: s.background_image,
-                        ...s.styles // Spread JSONB styles back into flat properties
-                    }))
-                }));
-                setCarouselHistory(formattedHistory);
-            }
-        } catch (err) {
-            console.error("Error fetching history:", err);
-        }
-    }, []);
-
-    // Auth State Listener
-    React.useEffect(() => {
-        let mounted = true;
-        
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!mounted) return;
-            if (session?.user) {
-                // Clean up URL hash if present (contains access_token)
-                if (window.location.hash && window.location.hash.includes('access_token')) {
-                    // Replace state to clear hash but keep pathname
-                    window.history.replaceState(null, '', window.location.pathname);
-                }
-                
-                // If on login/signup page but already logged in, redirect to dashboard
-                const currentPath = window.location.pathname;
-                if (currentPath === '/login' || currentPath === '/signup' || currentPath === '/') {
-                     window.history.replaceState(null, '', '/dashboard');
-                }
-
-                fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
-            } else {
-                const currentPath = window.location.pathname;
-                if (currentPath === '/signup') {
-                     setView('SIGNUP');
-                } else {
-                    setView('LOGIN');
-                    if (currentPath !== '/login') {
-                        window.history.replaceState(null, '', '/login');
-                    }
-                }
-            }
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (!mounted) return;
-            if (session?.user) {
-                fetchUserProfile(session.user.id, session.user.email!, session.user.user_metadata);
-            } else {
-                setUser(null);
-                setCarouselHistory([]);
-                const currentPath = window.location.pathname;
-                if (currentPath === '/signup') {
-                     setView('SIGNUP');
-                } else {
-                    setView('LOGIN');
-                    if (currentPath !== '/login') {
-                        window.history.replaceState(null, '', '/login');
-                    }
-                }
-            }
-        });
-
-        return () => {
-            mounted = false;
-            subscription.unsubscribe();
-        };
-    }, [fetchHistory]);
-
-    const fetchUserProfile = async (userId: string, email: string, metadata: any) => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found"
-                console.error("Error fetching profile:", error);
-            }
-
-            if (data) {
-                const userProfile: UserProfile = {
-                    name: data.full_name || metadata.full_name || email.split('@')[0],
-                    email: data.email || email,
-                    picture: data.avatar_url || metadata.avatar_url || '',
-                    niche: data.niche || [],
-                    profileComplete: data.is_profile_complete
-                };
-                setUser(userProfile);
-                if (data.is_profile_complete) {
-                    const intendedView = determineInitialView();
-                    // Don't stay on login page if profile is complete
-                    if (intendedView === 'LOGIN' || intendedView === 'SIGNUP' || intendedView === null) {
-                        setView('DASHBOARD');
-                        window.history.replaceState(null, '', '/dashboard');
-                    } else {
-                        setView(intendedView);
-                    }
-                    fetchHistory(userId);
-                } else {
-                    setView('PROFILE_SETUP');
-                }
-            } else {
-                // Profile doesn't exist in table yet, so they need to setup.
-                const newUser: UserProfile = {
-                    name: metadata.full_name || email.split('@')[0],
-                    email: email,
-                    picture: metadata.avatar_url || '',
-                    niche: [],
-                    profileComplete: false
-                };
-                setUser(newUser);
-                setView('PROFILE_SETUP');
-            }
-        } catch (e) {
-            console.error("Profile fetch error:", e);
-            setView('LOGIN');
-            window.history.replaceState(null, '', '/login');
-        }
-    };
-
-    // --- Helper: Save/Update Full Carousel to Supabase ---
-    const saveCarouselToDb = async (carousel: Carousel) => {
-        const session = await supabase.auth.getSession();
-        const userId = session.data.session?.user?.id;
-        if (!userId) return;
-        
-        console.log(`[SUPABASE START] Saving carousel "${carousel.title}"...`);
-
-        try {
-            // 1. Upsert Carousel
-            const { error: carouselError } = await supabase
-                .from('carousels')
-                .upsert({
-                    id: carousel.id,
-                    user_id: userId,
-                    title: carousel.title,
-                    category: carousel.category,
-                    preferences: carousel.preferences,
-                    created_at: carousel.createdAt
-                });
-
-            if (carouselError) {
-                 console.error("[SUPABASE ERROR] Failed to save carousel meta:", carouselError);
-                 throw carouselError;
-            }
-
-            // 2. Prepare Slides
-            // Note: We need to map frontend SlideData to DB columns
-            const slidesPayload = carousel.slides.map((s, index) => {
-                // Extract styles separately
-                const { id, headline, body, visual_prompt, backgroundImage, ...styles } = s;
-                return {
-                    id: s.id,
-                    carousel_id: carousel.id,
-                    headline,
-                    body,
-                    visual_prompt,
-                    background_image: backgroundImage,
-                    styles: styles, // JSONB column
-                    order: index
-                };
-            });
-
-            // 3. Upsert Slides
-            const { error: slidesError } = await supabase
-                .from('slides')
-                .upsert(slidesPayload);
-            
-            if (slidesError) {
-                console.error("[SUPABASE ERROR] Failed to save slides:", slidesError);
-                throw slidesError;
-            }
-
-            console.log(`[SUPABASE SUCCESS] Carousel "${carousel.title}" saved successfully.`);
-
-            // Update local history state to match
-            setCarouselHistory(prev => {
-                const exists = prev.find(c => c.id === carousel.id);
-                if (exists) {
-                    return prev.map(c => c.id === carousel.id ? carousel : c);
-                } else {
-                    return [carousel, ...prev];
-                }
-            });
-
-        } catch (e: any) {
-            console.error("Error saving carousel to DB:", e);
-            setError(`Failed to save changes to the cloud: ${e.message || 'Unknown error'}`);
-        }
-    };
-
-    // --- ---
-
+    // --- Helper: Parse Errors ---
     const parseAndDisplayError = React.useCallback((error: any): string => {
         let errorMessage = error.message || t('errorUnknown');
+        // ... (Existing error parsing logic remains the same)
         if (errorMessage.startsWith('{') && errorMessage.endsWith('}')) {
             try {
                 const errorObj = JSON.parse(errorMessage);
@@ -437,181 +186,24 @@ export default function App() {
         return errorMessage;
     }, [t]);
 
-    const handleSaveSettings = (newSettings: AppSettings) => {
-        setSettings(newSettings);
-        try {
-            localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
-        } catch (error) {
-            console.error("Could not save settings:", error);
-        }
-        setIsSettingsOpen(false);
-    };
-
-    // Auth Handlers
-    const handleGoogleLogin = async () => {
-        setError(null);
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + '/dashboard'
-                }
-            });
-            if (error) {
-                if (error.message?.includes("provider is not enabled")) {
-                     setError("Google Login belum diaktifkan di Dashboard Supabase Anda.");
-                } else {
-                    setError(error.message);
-                }
-            }
-        } catch (err: any) {
-            setError(err.message || "Failed to initialize login.");
-        }
-    };
-
-    const handleEmailLogin = async (email: string, password: string): Promise<boolean> => {
-        setError(null);
-        try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (error) {
-                setError(error.message);
-                return false;
-            }
-            return true;
-        } catch (err: any) {
-            setError(err.message);
-            return false;
-        }
-    };
-
-    const handleEmailSignUp = async (email: string, password: string, fullName: string): Promise<boolean> => {
-        setError(null);
-        try {
-            const { error } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: {
-                        full_name: fullName,
-                    },
-                },
-            });
-            if (error) {
-                setError(error.message);
-                return false;
-            }
-            alert(t('checkEmailConfirmation'));
-            return true;
-        } catch (err: any) {
-            setError(err.message);
-            return false;
-        }
-    };
-    
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setView('LOGIN');
-        window.history.pushState(null, '', '/login');
-    };
-
-    const handleProfileSetup = async (profile: Omit<UserProfile, 'profileComplete'>) => {
-        const session = await supabase.auth.getSession();
-        const userId = session.data.session?.user?.id;
-        if (!userId) return;
-
-        const cleanedProfile = {
-            ...profile,
-            niche: profile.niche.filter(n => n.trim() !== ''),
-        };
-
-        // Save to Supabase
-        const { error } = await supabase.from('profiles').upsert({
-            id: userId,
-            full_name: cleanedProfile.name,
-            email: cleanedProfile.email,
-            avatar_url: cleanedProfile.picture,
-            niche: cleanedProfile.niche,
-            is_profile_complete: true
-        });
-
-        if (error) {
-            console.error("Error saving profile:", error);
-            setError("Failed to save profile. Please try again.");
-            return;
-        }
-
-        setUser({ ...cleanedProfile, profileComplete: true });
-        setView('DASHBOARD');
-        window.history.pushState(null, '', '/dashboard');
-        fetchHistory(userId);
-    };
-    
-    const handleMigrateLocalData = async () => {
-        if (!user) return;
-        const saved = localStorage.getItem(HISTORY_STORAGE_KEY);
-        if (!saved) return;
-
-        try {
-            const localCarousels: Carousel[] = JSON.parse(saved);
-            if (localCarousels.length === 0) return;
-
-            const confirm = window.confirm(`We found ${localCarousels.length} carousels on your device. Do you want to sync them to your account?`);
-            if (!confirm) return;
-
-            let successCount = 0;
-            for (const carousel of localCarousels) {
-                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(carousel.id);
-                
-                const cleanCarousel = {
-                    ...carousel,
-                    id: isUUID ? carousel.id : crypto.randomUUID(),
-                    slides: carousel.slides.map(s => ({
-                        ...s,
-                        id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.id) ? s.id : crypto.randomUUID()
-                    }))
-                };
-
-                await saveCarouselToDb(cleanCarousel);
-                successCount++;
-            }
-
-            localStorage.removeItem(HISTORY_STORAGE_KEY);
-            setLocalHistoryCount(0);
-            
-            const userId = (await supabase.auth.getUser()).data.user?.id;
-            if (userId) fetchHistory(userId);
-
-            alert(`Successfully synced ${successCount} carousels!`);
-
-        } catch (e) {
-            console.error("Migration failed:", e);
-            alert("Migration partially failed. Check console for details.");
-        }
-    };
-
+    // --- Navigation Helpers ---
     const goToDashboard = () => {
-        if (view === 'LOGIN' || view === 'SIGNUP' || view === 'PROFILE_SETUP') return;
-        setIsSettingsOpen(false); // Close settings if navigating
+        setIsSettingsOpen(false); 
         if (currentCarousel) {
             saveCarouselToDb(currentCarousel);
         }
         setCurrentCarousel(null);
-        setView('DASHBOARD');
-        window.history.pushState(null, '', '/dashboard');
+        navigate('/dashboard');
     }
 
     const startNewCarousel = () => {
-        setIsSettingsOpen(false); // Close settings if navigating
+        setIsSettingsOpen(false); 
         if (currentCarousel) {
             saveCarouselToDb(currentCarousel);
         }
         setCurrentCarousel(null);
         setSelectedSlideId(null);
-        setView('GENERATOR');
-        window.history.pushState(null, '', '/generator');
+        navigate('/generator');
     };
 
     const handleEditCarousel = (carouselId: string) => {
@@ -620,32 +212,23 @@ export default function App() {
             setCurrentCarousel(carouselToEdit);
             setCurrentTopic(carouselToEdit.title);
             setSelectedSlideId(carouselToEdit.slides[0]?.id || null);
-            setView('GENERATOR');
-            window.history.pushState(null, '', '/generator');
-        }
-    };
-    
-    const handleDeleteCarousel = async (carouselId: string) => {
-        if (window.confirm(t('deleteCarouselConfirm'))) {
-            setCarouselHistory(prev => prev.filter(c => c.id !== carouselId));
-            const { error } = await supabase.from('carousels').delete().eq('id', carouselId);
-            if (error) {
-                console.error("Delete failed:", error);
-                fetchHistory((await supabase.auth.getUser()).data.user!.id);
-            }
+            navigate('/generator');
         }
     };
 
-    const handleClearHistory = async () => {
-        if (window.confirm(t('clearHistoryConfirm'))) {
-            setCarouselHistory([]);
-            const userId = (await supabase.auth.getUser()).data.user?.id;
-            if (userId) {
-                await supabase.from('carousels').delete().eq('user_id', userId);
-            }
+    const deleteCarousel = async (id: string) => {
+        if (window.confirm(t('deleteCarouselConfirm'))) {
+            await handleDeleteCarousel(id);
         }
-    };
-    
+    }
+
+    const clearHistory = async () => {
+        if (window.confirm(t('clearHistoryConfirm'))) {
+            await handleClearHistory();
+        }
+    }
+
+    // --- Generation Logic Helpers ---
     const executeImageGenerationForAllSlides = async (carousel: Carousel, settings: AppSettings): Promise<Carousel> => {
         let updatedCarousel = carousel;
         for (let i = 0; i < carousel.slides.length; i++) {
@@ -698,30 +281,22 @@ export default function App() {
         setGenerationMessage('');
     };
 
-
     const handleGenerateCarousel = React.useCallback(async (topic: string, niche: string, preferences: DesignPreferences, magicCreate: boolean) => {
         if (!user) return;
-        
-        if (!settings.apiKey) {
-            setError(t('errorApiKeyNotConfigured'));
-            return;
-        }
+        if (!settings.apiKey) { setError(t('errorApiKeyNotConfigured')); return; }
 
         setIsGenerating(true);
         setError(null);
         setCurrentCarousel(null);
         setCurrentTopic(topic);
         
-        let newCarousel: Carousel | null = null;
-
         try {
             setGenerationMessage(t('generatingContentMessage'));
             const nicheToUse = niche || (user.niche.length > 0 ? user.niche[0] : 'General');
             const slidesContent = await generateCarouselContent(topic, nicheToUse, preferences, settings);
-
             const initialSlides: SlideData[] = slidesContent.map(s => ({ ...s, id: crypto.randomUUID() }));
             
-            newCarousel = {
+            const newCarousel: Carousel = {
                 id: crypto.randomUUID(),
                 title: topic,
                 createdAt: new Date().toISOString(),
@@ -737,7 +312,6 @@ export default function App() {
             if (magicCreate) {
                 await executeImageGenerationForAllSlides(newCarousel, settings);
             } 
-
         } catch (err: any) {
             setError(parseAndDisplayError(err));
         } finally {
@@ -745,7 +319,18 @@ export default function App() {
             setGenerationMessage('');
             setIsGeneratingImageForSlide(null);
         }
-    }, [user, settings, t, parseAndDisplayError]);
+    }, [user, settings, t, parseAndDisplayError, saveCarouselToDb]);
+
+    // Slide Update Helper using the Hook
+    const handleUpdateSlide = (slideId: string, updates: Partial<SlideData>) => {
+        setCurrentCarousel(prev => {
+            if (!prev) return null;
+            const updatedSlides = prev.slides.map(s => s.id === slideId ? { ...s, ...updates } : s);
+            const newCarousel = { ...prev, slides: updatedSlides };
+            saveCarouselToDb(newCarousel); 
+            return newCarousel;
+        });
+    };
 
     const handleGenerateImageForSlide = async (slideId: string) => {
         if (!currentCarousel) return;
@@ -754,7 +339,6 @@ export default function App() {
     
         setIsGeneratingImageForSlide(slideId);
         setError(null);
-    
         try {
             const imageUrl = await generateImage(slide.visual_prompt, currentCarousel.preferences.aspectRatio, settings);
             handleUpdateSlide(slideId, { backgroundImage: imageUrl });
@@ -764,7 +348,7 @@ export default function App() {
             setIsGeneratingImageForSlide(null);
         }
     };
-    
+
     const handleGenerateAllImages = async () => {
         if (!currentCarousel) return;
         setIsGenerating(true);
@@ -780,6 +364,32 @@ export default function App() {
         }
     };
 
+    const handleGenerateVideoForSlide = async (slideId: string) => {
+        if (!currentCarousel) return;
+        const slide = currentCarousel.slides.find(s => s.id === slideId);
+        if (!slide) return;
+
+        try {
+            const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
+            if (!hasKey) await (window as any).aistudio?.openSelectKey();
+        } catch (e) { console.error(e); }
+    
+        setIsGeneratingVideoForSlide(slideId);
+        setGenerationMessage(t('generatingVideoMessage'));
+        setError(null);
+        try {
+            const videoUrl = await generateVideo(slide.visual_prompt, currentCarousel.preferences.aspectRatio, settings);
+            handleUpdateSlide(slideId, { backgroundImage: videoUrl });
+        } catch (err: any) {
+             const parsedError = parseAndDisplayError(err);
+            if (parsedError.includes("Requested entity was not found.")) setError(t('errorVeoKeyNotFound'));
+            else setError(parsedError);
+        } finally {
+            setIsGeneratingVideoForSlide(null);
+            setGenerationMessage('');
+        }
+    };
+
     const handleGenerateAllVideos = async () => {
         if (!currentCarousel) return;
         setIsGenerating(true);
@@ -788,148 +398,12 @@ export default function App() {
             await executeVideoGenerationForAllSlides(currentCarousel, settings);
         } catch (err: any) {
              const parsedError = parseAndDisplayError(err);
-             if (parsedError.includes("Requested entity was not found.")) {
-                setError(t('errorVeoKeyNotFound'));
-            } else {
-                setError(parsedError);
-            }
+             if (parsedError.includes("Requested entity was not found.")) setError(t('errorVeoKeyNotFound'));
+             else setError(parsedError);
         } finally {
             setIsGenerating(false);
             setGenerationMessage('');
             setIsGeneratingVideoForSlide(null);
-        }
-    };
-
-    const handleRegenerateContent = async (slideId: string, part: 'headline' | 'body') => {
-        if (!currentCarousel || regeneratingPart) return;
-        const slide = currentCarousel.slides.find(s => s.id === slideId);
-        if (!slide) return;
-
-        if (!settings.apiKey) {
-            setError(t('errorApiKeyNotConfigured'));
-            return;
-        }
-        setRegeneratingPart({ slideId, part });
-        setError(null);
-        try {
-            const newText = await regenerateSlideContent(currentCarousel.title, slide, part, settings);
-            handleUpdateSlide(slideId, { [part]: newText });
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setRegeneratingPart(null);
-        }
-    };
-
-    const handleGenerateCaption = async () => {
-        if (!currentCarousel) return;
-        setIsCaptionModalOpen(true);
-        if (!settings.apiKey) {
-            setError(t('errorApiKeyNotConfigured'));
-            setIsGeneratingCaption(false);
-            setGeneratedCaption('');
-            return;
-        }
-        setIsGeneratingCaption(true);
-        setGeneratedCaption('');
-        setError(null);
-        try {
-            const caption = await generateCaption(currentCarousel, settings);
-            setGeneratedCaption(caption);
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsGeneratingCaption(false);
-        }
-    };
-
-    const handleGenerateThread = async () => {
-        if (!currentCarousel) return;
-        setIsThreadModalOpen(true);
-        if (!settings.apiKey) {
-            setError(t('errorApiKeyNotConfigured'));
-            setIsGeneratingThread(false);
-            setGeneratedThread('');
-            return;
-        }
-        setIsGeneratingThread(true);
-        setGeneratedThread('');
-        setError(null);
-        try {
-            const thread = await generateThreadFromCarousel(currentCarousel, settings);
-            setGeneratedThread(thread);
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsGeneratingThread(false);
-        }
-    };
-
-    const handleGenerateVideoForSlide = async (slideId: string) => {
-        if (!currentCarousel) return;
-        const slide = currentCarousel.slides.find(s => s.id === slideId);
-        if (!slide) return;
-
-        try {
-            const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
-            if (!hasKey) {
-                await (window as any).aistudio?.openSelectKey();
-            }
-        } catch (e) {
-            console.error("AI Studio helper not available.", e);
-        }
-    
-        setIsGeneratingVideoForSlide(slideId);
-        setGenerationMessage(t('generatingVideoMessage'));
-        setError(null);
-    
-        try {
-            const videoUrl = await generateVideo(slide.visual_prompt, currentCarousel.preferences.aspectRatio, settings);
-            handleUpdateSlide(slideId, { backgroundImage: videoUrl });
-        } catch (err: any) {
-             const parsedError = parseAndDisplayError(err);
-            if (parsedError.includes("Requested entity was not found.")) {
-                setError(t('errorVeoKeyNotFound'));
-            } else {
-                setError(parsedError);
-            }
-        } finally {
-            setIsGeneratingVideoForSlide(null);
-            setGenerationMessage('');
-        }
-    };
-
-    const handleEditImageForSlide = async (slideId: string, editPrompt: string) => {
-        if (!currentCarousel || !editPrompt) return;
-        const slide = currentCarousel.slides.find(s => s.id === slideId);
-        if (!slide?.backgroundImage || !slide.backgroundImage.startsWith('data:image')) return;
-
-        setIsGeneratingImageForSlide(slideId);
-        setError(null);
-        
-        try {
-            const [meta, base64Data] = slide.backgroundImage.split(',');
-            const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/png';
-            const newImageUrl = await editImage(base64Data, mimeType, editPrompt, settings);
-            handleUpdateSlide(slideId, { backgroundImage: newImageUrl });
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsGeneratingImageForSlide(null);
-        }
-    };
-    
-    const handleGetDesignSuggestion = async () => {
-        if (!currentCarousel) return;
-        setIsSuggestingDesign(true);
-        setError(null);
-        try {
-            const suggestion = await getDesignSuggestion(currentCarousel.title, currentCarousel.category, settings);
-            handleUpdateCarouselPreferences({ ...suggestion }, currentTopic);
-        } catch (err: any) {
-            setError(parseAndDisplayError(err));
-        } finally {
-            setIsSuggestingDesign(false);
         }
     };
 
@@ -940,7 +414,6 @@ export default function App() {
         try {
             const zip = new JSZip();
             const slideElements = document.querySelectorAll('[data-carousel-slide]');
-            
             const slideOrderMap = new Map(currentCarousel.slides.map((slide, index) => [slide.id, index]));
             const orderedElements = Array.from(slideElements).sort((a, b) => {
                 const idA = a.getAttribute('data-carousel-slide') || '';
@@ -954,11 +427,11 @@ export default function App() {
                 const slide = currentCarousel.slides.find(s => s.id === slideId);
                 if (!slide) continue;
 
+                // Temporarily reset styles for clean capture
                 const originalTransform = element.style.transform;
                 const originalTransition = element.style.transition;
                 const originalBoxShadow = element.style.boxShadow;
                 const originalBorderRadius = element.style.borderRadius;
-
                 element.style.transform = 'none';
                 element.style.transition = 'none';
                 element.style.boxShadow = 'none';
@@ -968,24 +441,16 @@ export default function App() {
                 const isVideo = visualUrl?.startsWith('data:video');
                 
                 if (isVideo) {
-                    const videoResponse = await fetch(visualUrl);
+                    const videoResponse = await fetch(visualUrl!);
                     const videoBlob = await videoResponse.blob();
                     const extension = videoBlob.type.split('/')[1] || 'mp4';
                     zip.file(`slide-${i + 1}.${extension}`, videoBlob);
-
+                    // Capture thumbnail overlay
                     const videoElement = element.querySelector('video');
                     if (videoElement) videoElement.style.visibility = 'hidden';
-
-                    const overlayCanvas = await html2canvas(element, {
-                        allowTaint: true,
-                        useCORS: true,
-                        backgroundColor: null,
-                        scale: 2,
-                    });
+                    const overlayCanvas = await html2canvas(element, { allowTaint: true, useCORS: true, backgroundColor: null, scale: 2 });
                     const overlayBlob = await new Promise<Blob | null>(resolve => overlayCanvas.toBlob(resolve, 'image/png'));
-                    if (overlayBlob) {
-                        zip.file(`slide-${i + 1}_overlay.png`, overlayBlob);
-                    }
+                    if (overlayBlob) zip.file(`slide-${i + 1}_overlay.png`, overlayBlob);
                     if (videoElement) videoElement.style.visibility = 'visible';
                 } else {
                     const elementWidth = element.offsetWidth;
@@ -993,17 +458,12 @@ export default function App() {
                     const scaleFactor = targetWidth / elementWidth;
                     const finalBgColor = slide?.backgroundColor ?? currentCarousel.preferences.backgroundColor;
                     const canvas = await html2canvas(element, {
-                        allowTaint: true,
-                        useCORS: true,
-                        backgroundColor: visualUrl ? null : finalBgColor,
-                        scale: scaleFactor, 
+                        allowTaint: true, useCORS: true, backgroundColor: visualUrl ? null : finalBgColor, scale: scaleFactor, 
                     });
                     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
-                    if (blob) {
-                        zip.file(`slide-${i + 1}.png`, blob);
-                    }
+                    if (blob) zip.file(`slide-${i + 1}.png`, blob);
                 }
-
+                // Restore styles
                 element.style.transform = originalTransform;
                 element.style.transition = originalTransition;
                 element.style.boxShadow = originalBoxShadow;
@@ -1020,9 +480,7 @@ export default function App() {
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
 
-            const newCount = downloadCount + 1;
-            setDownloadCount(newCount);
-            localStorage.setItem(DOWNLOADS_STORAGE_KEY, JSON.stringify(newCount));
+            incrementDownloadCount();
 
         } catch (error) {
             console.error("Failed to download carousel:", error);
@@ -1032,33 +490,7 @@ export default function App() {
         }
     };
 
-    // Updated to sync with DB
-    const handleUpdateSlide = (slideId: string, updates: Partial<SlideData>) => {
-        setCurrentCarousel(prev => {
-            if (!prev) return null;
-            const updatedSlides = prev.slides.map(s => s.id === slideId ? { ...s, ...updates } : s);
-            const newCarousel = { ...prev, slides: updatedSlides };
-            saveCarouselToDb(newCarousel); 
-            return newCarousel;
-        });
-    };
-    
-    const handleUploadVisualForSlide = (e: React.ChangeEvent<HTMLInputElement>, slideId: string) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const visualUrl = reader.result as string;
-                handleUpdateSlide(slideId, { backgroundImage: visualUrl });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleRemoveVisualForSlide = (slideId: string) => {
-        handleUpdateSlide(slideId, { backgroundImage: undefined });
-    };
-
+    // Handlers for UI updates (bridging local state and hook logic)
     const handleUpdateCarouselPreferences = (updates: Partial<DesignPreferences>, topicValue: string) => {
         setCurrentCarousel(prev => {
             if (prev) {
@@ -1066,6 +498,7 @@ export default function App() {
                 saveCarouselToDb(newCarousel);
                 return newCarousel;
             }
+            // Handling case where user edits design before generating content (draft mode)
             return {
                 id: crypto.randomUUID(),
                 title: topicValue,
@@ -1093,7 +526,7 @@ export default function App() {
             };
         });
     };
-    
+
     const handleClearSlideOverrides = (property: keyof SlideData) => {
         setCurrentCarousel(prev => {
             if (!prev) return null;
@@ -1106,23 +539,6 @@ export default function App() {
             saveCarouselToDb(newCarousel);
             return newCarousel;
         });
-    };
-
-    const handleApplyBrandKit = () => {
-        if (!settings.brandKit) return;
-        const { colors, fonts, brandingText, brandingStyle } = settings.brandKit;
-        const mainFont = fonts.body || 'Inter' as any;
-        handleUpdateCarouselPreferences({
-            backgroundColor: colors.primary,
-            fontColor: colors.text,
-            font: mainFont,
-            brandingText: brandingText,
-            brandingStyle: brandingStyle,
-            headlineStyle: { ...currentCarousel?.preferences.headlineStyle },
-            bodyStyle: { ...currentCarousel?.preferences.bodyStyle }
-        }, currentTopic);
-        handleClearSlideOverrides('backgroundColor');
-        handleClearSlideOverrides('fontColor');
     };
 
     const handleMoveSlide = (slideId: string, direction: 'left' | 'right') => {
@@ -1139,6 +555,87 @@ export default function App() {
         saveCarouselToDb(newCarousel);
     };
 
+    const handleApplyBrandKit = () => {
+        if (!settings.brandKit) return;
+        const { colors, fonts, brandingText, brandingStyle, slideNumberStyle } = settings.brandKit;
+        const mainFont = fonts.body || 'Inter' as any;
+        handleUpdateCarouselPreferences({
+            backgroundColor: colors.primary,
+            fontColor: colors.text,
+            font: mainFont,
+            brandingText: brandingText,
+            brandingStyle: brandingStyle,
+            slideNumberStyle: slideNumberStyle,
+            headlineStyle: { ...currentCarousel?.preferences.headlineStyle },
+            bodyStyle: { ...currentCarousel?.preferences.bodyStyle }
+        }, currentTopic);
+        handleClearSlideOverrides('backgroundColor');
+        handleClearSlideOverrides('fontColor');
+    };
+
+    // Misc Handlers
+    const handleRegenerateContent = async (slideId: string, part: 'headline' | 'body') => {
+        if (!currentCarousel || regeneratingPart) return;
+        const slide = currentCarousel.slides.find(s => s.id === slideId);
+        if (!slide) return;
+        if (!settings.apiKey) { setError(t('errorApiKeyNotConfigured')); return; }
+        setRegeneratingPart({ slideId, part });
+        setError(null);
+        try {
+            const newText = await regenerateSlideContent(currentCarousel.title, slide, part, settings);
+            handleUpdateSlide(slideId, { [part]: newText });
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setRegeneratingPart(null); }
+    };
+
+    const handleGenerateCaption = async () => {
+        if (!currentCarousel) return;
+        setIsCaptionModalOpen(true);
+        if (!settings.apiKey) { setError(t('errorApiKeyNotConfigured')); setIsGeneratingCaption(false); return; }
+        setIsGeneratingCaption(true); setGeneratedCaption(''); setError(null);
+        try {
+            const caption = await generateCaption(currentCarousel, settings);
+            setGeneratedCaption(caption);
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsGeneratingCaption(false); }
+    };
+
+    const handleGenerateThread = async () => {
+        if (!currentCarousel) return;
+        setIsThreadModalOpen(true);
+        if (!settings.apiKey) { setError(t('errorApiKeyNotConfigured')); setIsGeneratingThread(false); return; }
+        setIsGeneratingThread(true); setGeneratedThread(''); setError(null);
+        try {
+            const thread = await generateThreadFromCarousel(currentCarousel, settings);
+            setGeneratedThread(thread);
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsGeneratingThread(false); }
+    };
+
+    const handleEditImageForSlide = async (slideId: string, editPrompt: string) => {
+        if (!currentCarousel || !editPrompt) return;
+        const slide = currentCarousel.slides.find(s => s.id === slideId);
+        if (!slide?.backgroundImage || !slide.backgroundImage.startsWith('data:image')) return;
+        setIsGeneratingImageForSlide(slideId); setError(null);
+        try {
+            const [meta, base64Data] = slide.backgroundImage.split(',');
+            const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/png';
+            const newImageUrl = await editImage(base64Data, mimeType, editPrompt, settings);
+            handleUpdateSlide(slideId, { backgroundImage: newImageUrl });
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsGeneratingImageForSlide(null); }
+    };
+
+    const handleGetDesignSuggestion = async () => {
+        if (!currentCarousel) return;
+        setIsSuggestingDesign(true); setError(null);
+        try {
+            const suggestion = await getDesignSuggestion(currentCarousel.title, currentCarousel.category, settings);
+            handleUpdateCarouselPreferences({ ...suggestion }, currentTopic);
+        } catch (err: any) { setError(parseAndDisplayError(err)); } 
+        finally { setIsSuggestingDesign(false); }
+    };
+
     const handleApplyAssistantSuggestion = (suggestion: string, type: 'hook' | 'cta') => {
         if (!selectedSlideId) return;
         const fieldToUpdate = type === 'hook' ? 'headline' : 'body';
@@ -1146,9 +643,21 @@ export default function App() {
         setIsAssistantOpen(false);
     };
 
-    const selectedSlide = React.useMemo(() => {
-        return currentCarousel?.slides.find(s => s.id === selectedSlideId);
-    }, [currentCarousel, selectedSlideId]);
+    const handleUploadVisualForSlide = (e: React.ChangeEvent<HTMLInputElement>, slideId: string) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const visualUrl = reader.result as string;
+                handleUpdateSlide(slideId, { backgroundImage: visualUrl });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveVisualForSlide = (slideId: string) => handleUpdateSlide(slideId, { backgroundImage: undefined });
+
+    const selectedSlide = React.useMemo(() => currentCarousel?.slides.find(s => s.id === selectedSlideId), [currentCarousel, selectedSlideId]);
     
     const mostUsedCategory = React.useMemo(() => {
         if (carouselHistory.length === 0) return 'N/A';
@@ -1159,145 +668,120 @@ export default function App() {
         return Object.entries(categoryCounts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
     }, [carouselHistory]);
 
-    const renderContent = () => {
-        switch (view) {
-            case 'LOADING': return <div className="flex h-full items-center justify-center"><Loader text="" /></div>;
-            case 'LOGIN': return (
-                <LoginScreen 
-                    onGoogleLogin={handleGoogleLogin} 
-                    onEmailLogin={handleEmailLogin}
-                    onEmailSignUp={handleEmailSignUp}
-                    t={t} 
-                    error={error} 
-                    onErrorDismiss={() => setError(null)}
-                    mode="login"
-                    onSwitchMode={(m) => {
-                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
-                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
-                    }}
-                />
-            );
-            case 'SIGNUP': return (
-                <LoginScreen 
-                    onGoogleLogin={handleGoogleLogin} 
-                    onEmailLogin={handleEmailLogin}
-                    onEmailSignUp={handleEmailSignUp}
-                    t={t} 
-                    error={error} 
-                    onErrorDismiss={() => setError(null)}
-                    mode="signup"
-                    onSwitchMode={(m) => {
-                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
-                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
-                    }}
-                />
-            );
-            case 'PROFILE_SETUP': return <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />;
-            case 'DASHBOARD': return (
-                <Dashboard
-                    onNewCarousel={startNewCarousel}
-                    onShowTutorial={() => setView('TUTORIAL')}
-                    history={carouselHistory}
-                    onEdit={handleEditCarousel}
-                    onDelete={handleDeleteCarousel}
-                    onClearHistory={handleClearHistory}
-                    t={t}
-                    downloadCount={downloadCount}
-                    mostUsedCategory={mostUsedCategory}
-                    localHistoryCount={localHistoryCount}
-                    onMigrateLocalData={handleMigrateLocalData}
-                />
-            );
-            case 'GENERATOR': return (
-                <Generator
-                    user={user!}
-                    isGenerating={isGenerating}
-                    generationMessage={generationMessage}
-                    error={error}
-                    onErrorDismiss={() => setError(null)}
-                    onGenerate={handleGenerateCarousel}
-                    currentCarousel={currentCarousel}
-                    setCurrentCarousel={setCurrentCarousel}
-                    selectedSlide={selectedSlide}
-                    onSelectSlide={setSelectedSlideId}
-                    onUpdateSlide={handleUpdateSlide}
-                    onUpdateCarouselPreferences={handleUpdateCarouselPreferences}
-                    onClearSlideOverrides={handleClearSlideOverrides}
-                    onMoveSlide={handleMoveSlide}
-                    onOpenAssistant={() => setIsAssistantOpen(true)}
-                    onOpenCaption={handleGenerateCaption}
-                    onOpenThread={handleGenerateThread}
-                    onDownload={handleDownloadCarousel}
-                    isDownloading={isDownloading}
-                    isGeneratingImageForSlide={isGeneratingImageForSlide}
-                    isGeneratingVideoForSlide={isGeneratingVideoForSlide}
-                    onGenerateImageForSlide={handleGenerateImageForSlide}
-                    onGenerateVideoForSlide={handleGenerateVideoForSlide}
-                    onGenerateAllVideos={handleGenerateAllVideos}
-                    onEditImageForSlide={handleEditImageForSlide}
-                    onGenerateAllImages={handleGenerateAllImages}
-                    onGetDesignSuggestion={handleGetDesignSuggestion}
-                    isSuggestingDesign={isSuggestingDesign}
-                    onRegenerateContent={handleRegenerateContent}
-                    onUploadVisualForSlide={handleUploadVisualForSlide}
-                    onRemoveVisualForSlide={handleRemoveVisualForSlide}
-                    onApplyBrandKit={handleApplyBrandKit}
-                    brandKitConfigured={!!settings.brandKit}
-                    t={t}
-                    regeneratingPart={regeneratingPart}
-                />
-            );
-            case 'TUTORIAL': return (
-                <TutorialScreen
-                    onBack={() => setView('DASHBOARD')}
-                    content={translations[language].tutorial}
-                />
-            );
-            default: return (
-                <LoginScreen 
-                    onGoogleLogin={handleGoogleLogin} 
-                    onEmailLogin={handleEmailLogin}
-                    onEmailSignUp={handleEmailSignUp}
-                    t={t} 
-                    error={error} 
-                    onErrorDismiss={() => setError(null)}
-                    mode="login"
-                    onSwitchMode={(m) => {
-                        setView(m === 'login' ? 'LOGIN' : 'SIGNUP');
-                        window.history.pushState(null, '', m === 'login' ? '/login' : '/signup');
-                    }}
-                />
-            );
-        }
-    };
+    if (isLoadingUser) {
+        return <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-950"><Loader text="" /></div>;
+    }
 
     return (
-        <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
-            <Header
-                user={user}
-                onLogout={handleLogout}
-                onDashboard={goToDashboard}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-                language={language}
-                onLanguageChange={handleLanguageChange}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                t={t}
-                currentView={view}
-                onNavigate={(v) => {
-                    if (v === 'DASHBOARD') goToDashboard();
-                    else if (v === 'GENERATOR') startNewCarousel();
-                    else setView(v);
-                }}
-            />
-            <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
-                <main className={`flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar ${view === 'GENERATOR' ? 'lg:overflow-hidden' : ''}`}>
-                    {renderContent()}
-                </main>
-                {view !== 'GENERATOR' && view !== 'LOADING' && view !== 'LOGIN' && view !== 'SIGNUP' && (
-                    <Footer className={!user ? "block" : "hidden md:block"} />
-                )}
-            </div>
+        <>
+            <Routes>
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route element={
+                    <MainLayout 
+                        user={user}
+                        onLogout={handleLogout}
+                        onDashboard={goToDashboard}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        language={language}
+                        onLanguageChange={handleLanguageChange}
+                        theme={theme}
+                        onToggleTheme={toggleTheme}
+                        t={t}
+                        isSettingsOpen={isSettingsOpen}
+                    />
+                }>
+                    <Route path="/dashboard" element={
+                        <Dashboard
+                            onNewCarousel={startNewCarousel}
+                            onShowTutorial={() => navigate('/tutorial')}
+                            history={carouselHistory}
+                            onEdit={handleEditCarousel}
+                            onDelete={deleteCarousel}
+                            onClearHistory={clearHistory}
+                            t={t}
+                            downloadCount={downloadCount}
+                            mostUsedCategory={mostUsedCategory}
+                            localHistoryCount={localHistoryCount}
+                            onMigrateLocalData={handleMigrateLocalData}
+                        />
+                    } />
+                    <Route path="/generator" element={
+                        <Generator
+                            user={user!}
+                            isGenerating={isGenerating}
+                            generationMessage={generationMessage}
+                            error={error}
+                            onErrorDismiss={dismissError}
+                            onGenerate={handleGenerateCarousel}
+                            currentCarousel={currentCarousel}
+                            setCurrentCarousel={setCurrentCarousel}
+                            selectedSlide={selectedSlide}
+                            onSelectSlide={setSelectedSlideId}
+                            onUpdateSlide={handleUpdateSlide}
+                            onUpdateCarouselPreferences={handleUpdateCarouselPreferences}
+                            onClearSlideOverrides={handleClearSlideOverrides}
+                            onMoveSlide={handleMoveSlide}
+                            onOpenAssistant={() => setIsAssistantOpen(true)}
+                            onOpenCaption={handleGenerateCaption}
+                            onOpenThread={handleGenerateThread}
+                            onDownload={handleDownloadCarousel}
+                            isDownloading={isDownloading}
+                            isGeneratingImageForSlide={isGeneratingImageForSlide}
+                            isGeneratingVideoForSlide={isGeneratingVideoForSlide}
+                            onGenerateImageForSlide={handleGenerateImageForSlide}
+                            onGenerateVideoForSlide={handleGenerateVideoForSlide}
+                            onGenerateAllVideos={handleGenerateAllVideos}
+                            onEditImageForSlide={handleEditImageForSlide}
+                            onGenerateAllImages={handleGenerateAllImages}
+                            onGetDesignSuggestion={handleGetDesignSuggestion}
+                            isSuggestingDesign={isSuggestingDesign}
+                            onRegenerateContent={handleRegenerateContent}
+                            onUploadVisualForSlide={handleUploadVisualForSlide}
+                            onRemoveVisualForSlide={handleRemoveVisualForSlide}
+                            onApplyBrandKit={handleApplyBrandKit}
+                            brandKitConfigured={!!settings.brandKit}
+                            t={t}
+                            regeneratingPart={regeneratingPart}
+                        />
+                    } />
+                    <Route path="/tutorial" element={
+                        <TutorialScreen
+                            onBack={() => navigate('/dashboard')}
+                            content={translations[language].tutorial}
+                        />
+                    } />
+                </Route>
+
+                <Route path="/login" element={
+                    <LoginScreen 
+                        onGoogleLogin={handleGoogleLogin} 
+                        onEmailLogin={handleEmailLogin}
+                        onEmailSignUp={handleEmailSignUp}
+                        t={t} 
+                        error={error} 
+                        onErrorDismiss={dismissError}
+                        mode="login"
+                        onSwitchMode={(m) => navigate(m === 'login' ? '/login' : '/signup')}
+                    />
+                } />
+                <Route path="/signup" element={
+                    <LoginScreen 
+                        onGoogleLogin={handleGoogleLogin} 
+                        onEmailLogin={handleEmailLogin}
+                        onEmailSignUp={handleEmailSignUp}
+                        t={t} 
+                        error={error} 
+                        onErrorDismiss={dismissError}
+                        mode="signup"
+                        onSwitchMode={(m) => navigate(m === 'login' ? '/login' : '/signup')}
+                    />
+                } />
+                <Route path="/profile-setup" element={
+                    <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />
+                } />
+                
+                <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
 
             {/* Modals */}
             {isAssistantOpen && (
@@ -1336,33 +820,17 @@ export default function App() {
             {isSettingsOpen && (
                 <SettingsModal
                     currentSettings={settings}
+                    user={user}
                     onClose={() => setIsSettingsOpen(false)}
                     onSave={handleSaveSettings}
+                    onUpdateUser={updateUser}
                     t={t}
                     onShowTutorial={() => {
                         setIsSettingsOpen(false);
-                        setView('TUTORIAL');
+                        navigate('/tutorial');
                     }}
                 />
             )}
-            {user && user.profileComplete && view !== 'LOADING' && (
-                <MobileFooter
-                    currentView={view}
-                    isSettingsOpen={isSettingsOpen}
-                    onNavigate={(targetView) => {
-                        if (targetView === 'DASHBOARD') {
-                            goToDashboard();
-                        } else if (targetView === 'GENERATOR') {
-                            startNewCarousel();
-                        } else if (targetView === 'SETTINGS') {
-                            setIsSettingsOpen(true);
-                        } else {
-                            setView(targetView);
-                        }
-                    }}
-                    t={t}
-                />
-            )}
-        </div>
+        </>
     );
 }

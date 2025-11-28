@@ -1,5 +1,4 @@
 
-
 export type Position = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center';
 
 export interface BrandKit {
@@ -20,6 +19,7 @@ export interface BrandKit {
     position: Position;
     fontSize?: number; // in rem
   };
+  slideNumberStyle?: SlideNumberStyle;
 }
 
 export interface TextStyle {

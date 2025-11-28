@@ -41,7 +41,7 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
     };
 
     return (
-        <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-x-hidden w-full">
+        <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
             <Header 
                 user={props.user}
                 onLogout={props.onLogout}

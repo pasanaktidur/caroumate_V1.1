@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>CarouMate: AI Carousel Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -129,9 +129,15 @@
         height: 100%;
         margin: 0;
         padding: 0;
+        overflow-x: hidden;
+        width: 100%;
+        /* Helps with iOS overflow issues */
+        position: fixed; 
+        overflow-y: auto;
       }
       #root {
         height: 100%;
+        width: 100%;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {

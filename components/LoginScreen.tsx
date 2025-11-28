@@ -83,13 +83,13 @@ export const LoginScreen: React.FC<{
     };
 
     return (
-        <div className="bg-white dark:bg-gray-950 min-h-screen flex flex-col overflow-x-hidden">
+        <div className="bg-white dark:bg-gray-950 min-h-screen flex flex-col w-full overflow-x-hidden">
             <main className="flex-grow flex flex-col justify-center w-full">
                 {/* Hero Section */}
                 <div className="relative overflow-hidden w-full flex-grow flex items-center">
-                    {/* Background Pattern - Fixed width changed to responsive to prevent desktop mode triggering */}
+                    {/* Background Pattern - Responsive width to prevent overflow */}
                     <div className="absolute inset-0 bg-grid-pattern dark:bg-grid-pattern-dark opacity-[0.03] dark:opacity-[0.05] pointer-events-none"></div>
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[200%] sm:w-[1000px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-[100%] blur-[100px] pointer-events-none"></div>
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] bg-primary-200/30 dark:bg-primary-900/20 rounded-[100%] blur-[80px] sm:blur-[100px] pointer-events-none"></div>
 
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 lg:py-16">
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

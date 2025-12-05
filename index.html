@@ -2,13 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="HandheldFriendly" content="true">
     <title>CarouMate: AI Carousel Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -131,25 +127,22 @@
       }
     </script>
     <style>
-      html, body {
+      html {
+        height: 100%;
+        width: 100%;
+      }
+      body {
         height: 100%;
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow-x: hidden;
+        overflow-x: hidden; /* Only prevent horizontal scroll at body level */
         -webkit-text-size-adjust: 100%;
-        touch-action: manipulation;
-        position: fixed; /* Ensures content doesn't scroll excessively on iOS/mobile and prevents desktop mode triggers */
-        top: 0;
-        left: 0;
       }
       #root {
         height: 100%;
-        width: 100%;
-        max-width: 100vw;
-        overflow-y: auto; /* Root handles scrolling */
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-direction: column;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {

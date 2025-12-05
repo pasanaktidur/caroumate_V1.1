@@ -40,6 +40,9 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
         }
     };
 
+    // Check if current path is generator
+    const isGenerator = location.pathname.includes('/generator');
+
     return (
         <div className="h-screen bg-gray-50 dark:bg-gray-950 flex flex-col overflow-x-hidden w-full">
             <Header 
@@ -56,7 +59,8 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
             <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
                 <main className="flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar">
                     <Outlet />
-                    <Footer className="block" />
+                    {/* Conditionally render Footer: Hide on Generator page */}
+                    {!isGenerator && <Footer className="block" />}
                 </main>
             </div>
             {props.user && props.user.profileComplete && (

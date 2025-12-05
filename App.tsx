@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import type { Carousel, SlideData, DesignPreferences, AppSettings } from './types';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
@@ -28,6 +28,17 @@ import { ThreadModal } from './components/ThreadModal';
 import { Loader } from './components/Loader';
 
 export type TFunction = (key: string, params?: { [key: string]: any }) => string;
+
+// ScrollToTop Component
+const ScrollToTop = () => {
+    const { pathname } = useLocation();
+    
+    React.useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    
+    return null;
+};
 
 export default function App() {
     const navigate = useNavigate();
@@ -665,6 +676,7 @@ export default function App() {
 
     return (
         <>
+            <ScrollToTop />
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 

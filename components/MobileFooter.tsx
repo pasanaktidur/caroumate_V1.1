@@ -1,6 +1,5 @@
-
 import * as React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import type { AppView } from '../types';
 import type { TFunction } from '../App';
 import { HomeIcon, SparklesIcon, SettingsIcon, GiftIcon } from './icons';

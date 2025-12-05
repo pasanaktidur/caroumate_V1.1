@@ -667,82 +667,7 @@ export default function App() {
         <>
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route element={
-                    <MainLayout 
-                        user={user}
-                        onLogout={handleLogout}
-                        onDashboard={goToDashboard}
-                        onOpenSettings={() => setIsSettingsOpen(true)}
-                        language={language}
-                        onLanguageChange={handleLanguageChange}
-                        theme={theme}
-                        onToggleTheme={toggleTheme}
-                        t={t}
-                        isSettingsOpen={isSettingsOpen}
-                    />
-                }>
-                    <Route path="/dashboard" element={
-                        <Dashboard
-                            onNewCarousel={startNewCarousel}
-                            onShowTutorial={() => navigate('/tutorial')}
-                            history={carouselHistory}
-                            onEdit={handleEditCarousel}
-                            onDelete={deleteCarousel}
-                            onClearHistory={clearHistory}
-                            t={t}
-                            downloadCount={downloadCount}
-                            mostUsedCategory={mostUsedCategory}
-                            localHistoryCount={localHistoryCount}
-                            onMigrateLocalData={handleMigrateLocalData}
-                        />
-                    } />
-                    <Route path="/generator" element={
-                        <Generator
-                            user={user!}
-                            isGenerating={isGenerating}
-                            generationMessage={generationMessage}
-                            error={error}
-                            onErrorDismiss={dismissError}
-                            onGenerate={handleGenerateCarousel}
-                            currentCarousel={currentCarousel}
-                            setCurrentCarousel={setCurrentCarousel}
-                            selectedSlide={selectedSlide}
-                            onSelectSlide={setSelectedSlideId}
-                            onUpdateSlide={handleUpdateSlide}
-                            onUpdateCarouselPreferences={handleUpdateCarouselPreferences}
-                            onClearSlideOverrides={handleClearSlideOverrides}
-                            onMoveSlide={handleMoveSlide}
-                            onOpenAssistant={() => setIsAssistantOpen(true)}
-                            onOpenCaption={handleGenerateCaption}
-                            onOpenThread={handleGenerateThread}
-                            onDownload={handleDownloadCarousel}
-                            isDownloading={isDownloading}
-                            isGeneratingImageForSlide={isGeneratingImageForSlide}
-                            isGeneratingVideoForSlide={isGeneratingVideoForSlide}
-                            onGenerateImageForSlide={handleGenerateImageForSlide}
-                            onGenerateVideoForSlide={handleGenerateVideoForSlide}
-                            onGenerateAllVideos={handleGenerateAllVideos}
-                            onEditImageForSlide={handleEditImageForSlide}
-                            onGenerateAllImages={handleGenerateAllImages}
-                            onGetDesignSuggestion={handleGetDesignSuggestion}
-                            isSuggestingDesign={isSuggestingDesign}
-                            onRegenerateContent={handleRegenerateContent}
-                            onUploadVisualForSlide={handleUploadVisualForSlide}
-                            onRemoveVisualForSlide={handleRemoveVisualForSlide}
-                            onApplyBrandKit={handleApplyBrandKit}
-                            brandKitConfigured={!!settings.brandKit}
-                            t={t}
-                            regeneratingPart={regeneratingPart}
-                        />
-                    } />
-                    <Route path="/tutorial" element={
-                        <TutorialScreen
-                            onBack={() => navigate('/dashboard')}
-                            content={translations[language].tutorial}
-                        />
-                    } />
-                </Route>
-
+                
                 <Route path="/login" element={
                     <LoginScreen 
                         onGoogleLogin={handleGoogleLogin} 
@@ -755,6 +680,7 @@ export default function App() {
                         onSwitchMode={(m) => navigate(m === 'login' ? '/login' : '/signup')}
                     />
                 } />
+                
                 <Route path="/signup" element={
                     <LoginScreen 
                         onGoogleLogin={handleGoogleLogin} 
@@ -767,11 +693,91 @@ export default function App() {
                         onSwitchMode={(m) => navigate(m === 'login' ? '/login' : '/signup')}
                     />
                 } />
+                
                 <Route path="/profile-setup" element={
                     <ProfileSetupModal user={user!} onSetupComplete={handleProfileSetup} t={t} />
                 } />
-                
-                <Route path="*" element={<Navigate to="/login" replace />} />
+
+                {/* Main App Routes */}
+                <Route path="/*" element={
+                    <MainLayout 
+                        user={user}
+                        onLogout={handleLogout}
+                        onDashboard={goToDashboard}
+                        onOpenSettings={() => setIsSettingsOpen(true)}
+                        language={language}
+                        onLanguageChange={handleLanguageChange}
+                        theme={theme}
+                        onToggleTheme={toggleTheme}
+                        t={t}
+                        isSettingsOpen={isSettingsOpen}
+                    >
+                        <Routes>
+                            <Route path="dashboard" element={
+                                <Dashboard
+                                    onNewCarousel={startNewCarousel}
+                                    onShowTutorial={() => navigate('/tutorial')}
+                                    history={carouselHistory}
+                                    onEdit={handleEditCarousel}
+                                    onDelete={deleteCarousel}
+                                    onClearHistory={clearHistory}
+                                    t={t}
+                                    downloadCount={downloadCount}
+                                    mostUsedCategory={mostUsedCategory}
+                                    localHistoryCount={localHistoryCount}
+                                    onMigrateLocalData={handleMigrateLocalData}
+                                />
+                            } />
+                            <Route path="generator" element={
+                                <Generator
+                                    user={user!}
+                                    isGenerating={isGenerating}
+                                    generationMessage={generationMessage}
+                                    error={error}
+                                    onErrorDismiss={dismissError}
+                                    onGenerate={handleGenerateCarousel}
+                                    currentCarousel={currentCarousel}
+                                    setCurrentCarousel={setCurrentCarousel}
+                                    selectedSlide={selectedSlide}
+                                    onSelectSlide={setSelectedSlideId}
+                                    onUpdateSlide={handleUpdateSlide}
+                                    onUpdateCarouselPreferences={handleUpdateCarouselPreferences}
+                                    onClearSlideOverrides={handleClearSlideOverrides}
+                                    onMoveSlide={handleMoveSlide}
+                                    onOpenAssistant={() => setIsAssistantOpen(true)}
+                                    onOpenCaption={handleGenerateCaption}
+                                    onOpenThread={handleGenerateThread}
+                                    onDownload={handleDownloadCarousel}
+                                    isDownloading={isDownloading}
+                                    isGeneratingImageForSlide={isGeneratingImageForSlide}
+                                    isGeneratingVideoForSlide={isGeneratingVideoForSlide}
+                                    onGenerateImageForSlide={handleGenerateImageForSlide}
+                                    onGenerateVideoForSlide={handleGenerateVideoForSlide}
+                                    onGenerateAllVideos={handleGenerateAllVideos}
+                                    onEditImageForSlide={handleEditImageForSlide}
+                                    onGenerateAllImages={handleGenerateAllImages}
+                                    onGetDesignSuggestion={handleGetDesignSuggestion}
+                                    isSuggestingDesign={isSuggestingDesign}
+                                    onRegenerateContent={handleRegenerateContent}
+                                    onUploadVisualForSlide={handleUploadVisualForSlide}
+                                    onRemoveVisualForSlide={handleRemoveVisualForSlide}
+                                    onApplyBrandKit={handleApplyBrandKit}
+                                    brandKitConfigured={!!settings.brandKit}
+                                    t={t}
+                                    regeneratingPart={regeneratingPart}
+                                />
+                            } />
+                            <Route path="tutorial" element={
+                                <TutorialScreen
+                                    onBack={() => navigate('/dashboard')}
+                                    content={translations[language].tutorial}
+                                />
+                            } />
+                            {/* Fallback for unknown routes inside logged-in area */}
+                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                    </MainLayout>
+                } />
             </Routes>
 
             {/* Modals */}

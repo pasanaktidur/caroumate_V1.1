@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import type { SlideData, DesignPreferences, TextStyle, Position } from '../types';
 import { DesignStyle } from '../types';
@@ -49,10 +48,10 @@ export const SlideCard: React.FC<{
     const aspectRatioClass = aspectRatioClassMap[finalPrefs.aspectRatio] || 'aspect-square';
 
     const getDynamicStyles = (style: TextStyle, type: 'headline' | 'body') => {
-        const cssStyle: React.CSSProperties = {
+        const cssStyle: any = { // Cast to any to allow flexible assignment of standard CSS properties
             fontWeight: style.fontWeight,
             fontStyle: style.fontStyle,
-            textDecorationLine: style.textDecorationLine,
+            textDecoration: style.textDecoration,
             textAlign: style.textAlign,
             textTransform: style.textTransform,
         };
@@ -85,7 +84,7 @@ export const SlideCard: React.FC<{
                  0  ${w}px 0 ${c}
             `;
         }
-        return cssStyle;
+        return cssStyle as React.CSSProperties;
     };
     
     const headlineStyles = getDynamicStyles(finalPrefs.headlineStyle, 'headline');

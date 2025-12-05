@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 // FIX: FontChoice is an enum used as a value, so it must be imported as a value, not a type.
 import type { TextStyle, Position } from '../types';
@@ -121,16 +120,16 @@ export const TextFormatToolbar: React.FC<{ style: TextStyle, onStyleChange: (new
     };
 
     const toggleDecoration = (value: 'underline' | 'line-through') => {
-        const decorations = new Set((style.textDecorationLine || '').split(' ').filter(Boolean));
+        const decorations = new Set((style.textDecoration || '').split(' ').filter(Boolean));
         if (decorations.has(value)) {
             decorations.delete(value);
         } else {
             decorations.add(value);
         }
-        onStyleChange({ ...style, textDecorationLine: Array.from(decorations).join(' ') });
+        onStyleChange({ ...style, textDecoration: Array.from(decorations).join(' ') });
     };
 
-    const isDecorationActive = (value: string) => (style.textDecorationLine || '').includes(value);
+    const isDecorationActive = (value: string) => (style.textDecoration || '').includes(value);
 
     const btnBase = "p-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50";
     const btnActive = "bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300";

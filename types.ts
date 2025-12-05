@@ -1,4 +1,3 @@
-
 export type Position = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top-center' | 'bottom-center';
 
 export interface BrandKit {
@@ -25,7 +24,7 @@ export interface BrandKit {
 export interface TextStyle {
   fontWeight?: 'bold' | 'normal';
   fontStyle?: 'italic' | 'normal';
-  textDecorationLine?: string; // e.g., 'underline', 'line-through', or 'underline line-through'
+  textDecoration?: string; // e.g., 'underline', 'line-through', or 'underline line-through'
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   textTransform?: 'uppercase' | 'none';
   fontSize?: number; // in rem

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { MobileFooter } from './MobileFooter';
 import { Footer } from './Footer';
@@ -17,6 +17,7 @@ interface MainLayoutProps {
     onToggleTheme: () => void;
     t: TFunction;
     isSettingsOpen: boolean;
+    children?: React.ReactNode;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = (props) => {
@@ -55,7 +56,7 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
             />
             <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
                 <main className="flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar">
-                    <Outlet />
+                    {props.children}
                     <Footer className="block" />
                 </main>
             </div>

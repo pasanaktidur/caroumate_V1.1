@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { MobileFooter } from './MobileFooter';
 import { Footer } from './Footer';
@@ -17,6 +17,7 @@ interface MainLayoutProps {
     onToggleTheme: () => void;
     t: TFunction;
     isSettingsOpen: boolean;
+    children?: React.ReactNode;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = (props) => {
@@ -44,7 +45,7 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
     const isGenerator = location.pathname.includes('/generator');
 
     return (
-        <div className="h-[100dvh] bg-gray-50 dark:bg-gray-950 flex flex-col overflow-x-hidden w-full">
+        <div className="h-[100dvh] bg-gray-50 dark:bg-gray-950 flex flex-col overflow-x-hidden w-full max-w-[100vw]">
             <Header 
                 user={props.user}
                 onLogout={props.onLogout}
@@ -58,7 +59,7 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
             />
             <div className="flex flex-col flex-grow w-full min-w-0 relative bg-gray-50 dark:bg-gray-950 overflow-hidden">
                 <main className="flex-grow w-full relative transition-all duration-300 overflow-y-auto custom-scrollbar">
-                    <Outlet />
+                    {props.children}
                     {/* Conditionally render Footer: Hide on Generator page */}
                     {!isGenerator && <Footer className="block" />}
                 </main>
